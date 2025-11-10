@@ -203,3 +203,22 @@ button[type="submit"]:hover {
 .links a:hover {
     text-decoration: underline;
 }
+
+select {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border 0.3s;
+    background: white;
+    color: #333;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.10);
+}
+
+select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px #c3daf1;
+}

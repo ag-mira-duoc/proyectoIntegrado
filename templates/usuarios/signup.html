@@ -16,12 +16,21 @@
             <input type="text" id="apellido" placeholder="Apellido" required>
             <input type="text" id="rut" placeholder="RUT (ej: 12345678-9)" required>
             <input type="email" id="email" placeholder="Email" required>
+            
+            <select id="corredora_id" name="corredora_id" required>
+                <option value="">Selecciona tu Corredora *</option>
+                {% for corredora in corredoras %}
+                    <option value="{{ corredora.id }}">{{ corredora.nombre }}</option>
+                {% endfor %}
+            </select>
+
             <input type="password" id="password" placeholder="Contraseña" required>
+            <input type="password" id="password2" placeholder="Confirmar Contraseña" required>
             <button type="submit">Crear Cuenta</button>
         </form>
         <div id="message"></div>
         <div class="links">
-            <a href='{% url "usuarios:login" %}'>¿Ya tienes cuenta? Inicia sesión</a>
+            <a href='/auth/login/'>¿Ya tienes cuenta? Inicia sesión</a>
             <span>|</span>
             <a href="/">Volver al inicio</a>
         </div>
@@ -35,18 +44,32 @@
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            const password = document.getElementById('password').value;
+            const password2 = document.getElementById('password2').value;
+            const messageDiv = document.getElementById('message');
+
+            if (password !== password2) {
+                messageDiv.className = 'message error';
+                messageDiv.textContent = 'Las contraseñas no coinciden.';
+                return;
+            }
+            
+            // Construir el objeto de datos, incluyendo 'corredora' y 'password2'
             const data = {
                 first_name: document.getElementById('nombre').value,
                 last_name: document.getElementById('apellido').value,
                 rut: document.getElementById('rut').value,
                 email: document.getElementById('email').value,
-                password: document.getElementById('password').value
+                password: password,
+                password2: password2,
+                corredora: document.getElementById('corredora_id').value 
             };
 
             const csrfToken = getCsrfToken();
+            messageDiv.innerHTML = ''; 
             
             try {
-                const response = await fetch('{% url "usuarios:signup" %}', {
+                const response = await fetch('/auth/signup/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -56,25 +79,23 @@
                 });
 
                 const result = await response.json();
-                const messageDiv = document.getElementById('message');
                 
-                if (response.ok) {
+                if (response.ok || response.status === 201) { 
                     messageDiv.className = 'message success';
-                    messageDiv.textContent = result.message;
-
-                    localStorage.setItem('auth_token', result.token); 
+                    messageDiv.textContent = result.message || '¡Registro exitoso! Por favor, inicia sesión.';
 
                     document.getElementById('signupForm').reset();
                     setTimeout(() => {
-                        window.location.href = '{% url "usuarios:login" %}';
+                        window.location.href = '/auth/login/';
                     }, 2000);
                 } else {
                     messageDiv.className = 'message error';
-                    messageDiv.textContent = JSON.stringify(result);
+                    messageDiv.textContent = result.detail || JSON.stringify(result);
                 }
             } catch (error) {
                 document.getElementById('message').className = 'message error';
-                document.getElementById('message').textContent = 'Error: ' + error;
+                document.getElementById('message').textContent = 'Error de conexión con el servidor: ' + error;
+                console.error('Error:', error);
             }
         });
     </script>

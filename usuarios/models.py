@@ -35,7 +35,9 @@ class TipoUsuario(models.Model):
 class User(AbstractUser):
     email = models.CharField(max_length=80, unique=True)
     rut = models.CharField(max_length=11, unique=True)
-    corredora = models.OneToOneField('acciones.Corredora', models.DO_NOTHING, blank=True, null=True)
+    corredora = models.ForeignKey('acciones.Corredora', models.DO_NOTHING, blank=True, null=True
+)
+
     created = models.DateTimeField(auto_now_add=True)
 
     objects = CustomUserManager()
@@ -43,4 +45,4 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ["rut"]
 
     def __str__(self):
-        return f"{self.nombre} {self.apellido} ({self.email})"
+        return f"{self.first_name} {self.last_name} ({self.email})"

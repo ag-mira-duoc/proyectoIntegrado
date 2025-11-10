@@ -18,7 +18,7 @@
         </form>
         <div id="message"></div>
         <div class="links">
-            <a href='{% url "usuarios:signup" %}'>¿No tienes cuenta? Regístrate</a>
+            <a href='/auth/signup/';>¿No tienes cuenta? Regístrate</a>
             <span>|</span>
             <a href="/">Volver al inicio</a>
         </div>
@@ -42,7 +42,7 @@
             messageDiv.innerHTML = '';
 
             try {
-                const response = await fetch('{% url "usuarios:login" %}', {
+                const response = await fetch('/auth/login/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -66,9 +66,11 @@
                         localStorage.setItem('refresh_token', result.tokens.refresh);
                     }
                     
-                    // Redirección a calificaciones
+                    // Redirección  
+                    const finalRedirectUrl = result.redirect_url || '/calificaciones/';
+
                     setTimeout(() => {
-                        window.location.href = '/calificaciones/';
+                        window.location.href = finalRedirectUrl;
                     }, 1000);
 
                 } else {

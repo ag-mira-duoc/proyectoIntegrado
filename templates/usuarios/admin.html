@@ -1,0 +1,236 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración</title>
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+</head>
+<body>
+    <div class="header">
+        <h1>Panel de Administración</h1>
+        <div class="user-info">
+            <span>Administrador: <strong id="admin-nombre">Cargando...</strong></span>
+            <a href="/admin/calificaciones/" class="btn btn-primary">Ver Calificaciones</a>
+            <button onclick="cerrarSesion()" class="btn btn-danger">Cerrar Sesión</button>
+        </div>
+    </div>
+    
+    <div class="metrics">
+        <div class="metric-card">
+            <h3>SOLICITUDES PENDIENTES</h3>
+            <div class="value">{{ pending_count }}</div>
+        </div>
+        <div class="metric-card">
+            <h3>USUARIOS ACTIVOS</h3>
+            <div class="value">{{ total_users }}</div>
+        </div>
+        <div class="metric-card">
+            <h3>CORREDORAS</h3>
+            <div class="value">{{ total_corredoras }}</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2 class="section-title">Solicitudes de Registro Pendientes</h2>
+        
+        <div class="filters">
+            <input type="text" id="busqueda" placeholder="Buscar por nombre, email o RUT...">
+            <button type="button" class="btn btn-primary" onclick="buscarSolicitud()">Actualizar</button>
+        </div>
+        
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Email</th>
+                        <th>RUT</th>
+                        <th>Corredora</th>
+                        <th>Fecha Registro</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% if pending_users %}
+                    {% for user in pending_users %}
+                    <tr id="user-row-{{ user.id }}">
+                        <td>{{ user.first_name }} {{ user.last_name }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.rut }}</td>
+                        <td>
+                            <select id="corredora-{{ user.id }}">
+                                <option value="">Seleccionar corredora</option>
+                                {% for corredora in corredoras %}
+                                <option value="{{ corredora.id }}" {% if user.corredora_id == corredora.id %}selected{% endif %}>
+                                    {{ corredora.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td>{{ user.date_joined_formatted }}</td>
+                        <td><span class="status-badge status-pending">Pendiente</span></td>
+                        <td>
+                            <div class="action-buttons">
+                                <button type="button" class="btn btn-primary btn-sm" onclick="verDetalleUsuario({{ user.id }})">Ver Detalle</button>
+                                <button type="button" class="btn btn-success btn-sm" onclick="aprobarUsuario({{ user.id }})">Aprobar</button>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="rechazarUsuario({{ user.id }})">Rechazar</button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="no-data">No hay solicitudes pendientes</td>
+                    </tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Modal Detalle Usuario -->
+    <div id="modal-detalle-usuario" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Detalle del Usuario</h2>
+                <button class="close-modal" onclick="cerrarModalDetalleUsuario()">&times;</button>
+            </div>
+            <div id="detalle-usuario">
+                <!-- Aquí se cargará el detalle dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getCookie(nombre) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, nombre.length + 1) === (nombre + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(nombre.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function cerrarSesion() {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            window.location.href = '/auth/login/';
+        }
+
+        function buscarSolicitud() {
+            const busqueda = document.getElementById('busqueda').value;
+            // Implementar lógica de búsqueda
+            console.log('Buscando:', busqueda);
+        }
+
+        function aprobarUsuario(userId) {
+            const corredoraSelect = document.getElementById(`corredora-${userId}`);
+            const corredoraId = corredoraSelect.value;
+            if (!corredoraId) {
+                alert('Selecciona una corredora antes de aprobar');
+                return;
+            }
+            const token = localStorage.getItem('access_token');
+            const csrftoken = getCookie('csrftoken');
+            fetch(`/auth/admin/approve/${userId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ corredora: corredoraId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    document.getElementById(`user-row-${userId}`).remove();
+                    const valorElement = document.querySelector('.metric-card .value');
+                    if (valorElement) {
+                        const valorActual = parseInt(valorElement.textContent);
+                        valorElement.textContent = valorActual - 1;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al aprobar usuario');
+            });
+        }
+
+        function rechazarUsuario(userId) {
+            if (!confirm('¿Seguro que deseas rechazar este usuario?')) return;
+            const token = localStorage.getItem('access_token');
+            const csrftoken = getCookie('csrftoken');
+            fetch(`/auth/admin/reject/${userId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    'X-CSRFToken': csrftoken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    document.getElementById(`user-row-${userId}`).remove();
+                    const valorElement = document.querySelector('.metric-card .value');
+                    if (valorElement) {
+                        const valorActual = parseInt(valorElement.textContent);
+                        valorElement.textContent = valorActual - 1;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al rechazar usuario');
+            });
+        }
+
+        function verDetalleUsuario(userId) {
+            const token = localStorage.getItem('access_token');
+            fetch(`/auth/admin/detail/${userId}/`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error("No encontrado");
+                return response.json();
+            })
+            .then(data => {
+                // Comprobamos la presencia de datos y los mostramos
+                let html = '';
+                html += `<div class="info-row"><span class="info-label">Nombre:</span><span class="info-value">${data.first_name || ''} ${data.last_name || ''}</span></div>`;
+                html += `<div class="info-row"><span class="info-label">Email:</span><span class="info-value">${data.email || ''}</span></div>`;
+                html += `<div class="info-row"><span class="info-label">RUT:</span><span class="info-value">${data.rut || ''}</span></div>`;
+                html += `<div class="info-row"><span class="info-label">Corredora:</span><span class="info-value">${data.corredora_nombre || "Sin asignar"}</span></div>`;
+                html += `<div class="info-row"><span class="info-label">Fecha registro:</span><span class="info-value">${data.date_joined_formatted || ''}</span></div>`;
+                if (data.telefono) html += `<div class="info-row"><span class="info-label">Teléfono:</span><span class="info-value">${data.telefono}</span></div>`;
+                if (data.direccion) html += `<div class="info-row"><span class="info-label">Dirección:</span><span class="info-value">${data.direccion}</span></div>`;
+                document.getElementById('detalle-usuario').innerHTML = html;
+                document.getElementById('modal-detalle-usuario').style.display = 'block';
+            })
+            .catch(error => {
+                document.getElementById('detalle-usuario').innerHTML = '<div class="info-row">Error consultando el usuario.</div>';
+                document.getElementById('modal-detalle-usuario').style.display = 'block';
+            });
+        }
+
+        function cerrarModalDetalleUsuario() {
+           document.getElementById('modal-detalle-usuario').style.display = 'none';
+           document.getElementById('detalle-usuario').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
