@@ -23,6 +23,13 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView
 )
 
+try:
+    from nuam_config.views import homepage
+except ImportError:
+    from django.shortcuts import render
+    def homepage(request):
+        return render(request, 'index.html')
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.homepage, name='homepage'),

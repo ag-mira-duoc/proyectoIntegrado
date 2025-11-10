@@ -50,6 +50,7 @@ class Calificacion(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     
     class Meta:
+        managed = True
         db_table = 'calificacion'
         ordering = ['-created']
         verbose_name = 'Calificación'

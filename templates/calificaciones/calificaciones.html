@@ -1,0 +1,582 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calificaciones Tributarias</title>
+    <link rel="stylesheet" href="{% static 'css/calificaciones.css' %}">
+</head>
+<body>
+    <div class="header">
+        <h1>Calificaciones Tributarias</h1>
+        <div class="user-info">
+            <span class="user-name">Usuario: <strong id="userName">Cargando...</strong></span>
+            <button class="btn-logout" onclick="logout()">Cerrar Sesión</button>
+        </div>
+    </div>
+
+    <!-- Container Principal -->
+    <div class="container">
+        <!-- Filtros -->
+        <div class="filters">
+            <div class="filter-group">
+                <label>Mercado</label>
+                <select id="filterMercado">
+                    <option value="">ACCIONES</option>
+                    <option value="AC">ACCIONES</option>
+                    <option value="RF">RENTA FIJA</option>
+                    <option value="FI">FONDOS INVERSIÓN</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>Origen</label>
+                <input type="text" id="filterOrigen" placeholder="Filtrar por origen">
+            </div>
+            
+            <div class="filter-group">
+                <label>Corredor</label>
+                <select id="filterCorredor">
+                    <option value="">CORREDOR</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>Período Comercial</label>
+                <select id="filterAnno">
+                    <option value="">2025</option>
+                    <option value="2025">2025</option>
+                    <option value="2024">2024</option>
+                    <option value="2023">2023</option>
+                </select>
+            </div>
+            
+            <div class="filter-group" style="flex-direction: row; align-items: center; gap: 10px;">
+                <input type="checkbox" id="filterPendiente">
+                <label for="filterPendiente" style="margin: 0;">Calificación Pendiente</label>
+            </div>
+        </div>
+        
+        <!-- Botones de Acción -->
+        <div class="action-buttons">
+            <button class="btn btn-primary" onclick="buscarCalificaciones()">BUSCAR</button>
+            <button class="btn btn-secondary" onclick="limpiarFiltros()">LIMPIAR</button>
+        </div>
+        
+        <!-- Mensaje -->
+        <div id="message" class="message"></div>
+        
+        <!-- Tabla -->
+        <div class="table-container">
+            <div id="loadingIndicator" class="loading" style="display: none;">
+                Cargando calificaciones...
+            </div>
+            
+            <table id="calificacionesTable">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                        <th>Ejercicio</th>
+                        <th>Instrumento</th>
+                        <th>Fecha Pago</th>
+                        <th>Descripción</th>
+                        <th>Secuencia Evento</th>
+                        <th>Factor Actual.</th>
+                        <th>Factor-08</th>
+                        <th>Factor-09</th>
+                        <th>Factor-10</th>
+                        <th>Factor-11</th>
+                        <th>Factor-12</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="13" class="no-data">No hay registros. Haz clic en "BUSCAR" para cargar datos.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación -->
+        <div class="pagination">
+            <div class="pagination-info">
+                <span id="paginationInfo">Elementos mostrados 0 - 0 de 0</span>
+            </div>
+            <div class="pagination-controls">
+                <button class="page-btn" onclick="cambiarPagina('first')">⏮</button>
+                <button class="page-btn" onclick="cambiarPagina('prev')">◀</button>
+                <button class="page-btn active" id="currentPage">1</button>
+                <button class="page-btn" onclick="cambiarPagina('next')">▶</button>
+                <button class="page-btn" onclick="cambiarPagina('last')">⏭</button>
+            </div>
+        </div>
+        
+        <!-- Botones Inferiores -->
+        <div class="bottom-buttons">
+            <button class="btn btn-primary" onclick="abrirModalIngresar()">INGRESAR</button>
+            <button class="btn btn-secondary" onclick="modificarSeleccionado()">MODIFICAR</button>
+            <button class="btn btn-secondary" onclick="eliminarSeleccionado()">ELIMINAR</button>
+            <button class="btn btn-secondary" onclick="copiarSeleccionado()">COPIAR</button>
+            <button class="btn btn-secondary">CARGA X FACTOR</button>
+            <button class="btn btn-secondary">CARGA X MONTO</button>
+            <button class="btn btn-secondary" style="margin-left: auto;">OPCIONES</button>
+        </div>
+    </div>
+
+    <!-- Modal Ingresar/Modificar -->
+    <div id="modalCalificacion" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Ingresar Calificación</h2>
+                <button class="close-modal" onclick="cerrarModal()">×</button>
+            </div>
+            
+            <form id="calificacionForm">
+                <div class="form-group">
+                    <label>Mercado</label>
+                    <input type="text" id="mercado" required maxlength="3">
+                </div>
+                
+                <div class="form-group">
+                    <label>Instrumento *</label>
+                    <input type="text" id="instrumento" required maxlength="50">
+                </div>
+                
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <input type="text" id="descripcion" maxlength="50">
+                </div>
+                
+                <div class="form-group">
+                    <label>Fecha Pago *</label>
+                    <input type="date" id="fecha_pago" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Secuencia Evento</label>
+                    <input type="number" id="secuencia_evento">
+                </div>
+                
+                <div class="form-group">
+                    <label>Dividendo</label>
+                    <input type="number" id="dividendo">
+                </div>
+                
+                <div class="form-group">
+                    <label>Año *</label>
+                    <input type="number" id="anno" required min="2000" max="2099">
+                </div>
+                
+                <div class="form-group">
+                    <label>Factor de Actualización</label>
+                    <input type="date" id="factor_actualizacion">
+                </div>
+                
+                <div class="form-group">
+                    <label>ISFUT</label>
+                    <input type="number" id="isfut">
+                </div>
+                
+                <div class="form-group">
+                    <label>Valor Histórico</label>
+                    <input type="number" id="valor_historico" step="0.01">
+                </div>
+                
+                <div class="form-group">
+                    <label>Ingreso Montos</label>
+                    <input type="number" id="ingreso_montos">
+                </div>
+                
+                <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="isfut_check">
+                    <label for="isfut_check" style="margin: 0;">ISFUT</label>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="cerrarModal()">CANCELAR</button>
+                    <button type="submit" class="btn btn-primary">GUARDAR</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let calificaciones = [];
+        let selectedRows = new Set();
+        let editingId = null;
+        let currentPage = 1;
+        const itemsPerPage = 20;
+        
+        // Función para obtener el token
+        function getToken() {
+            return localStorage.getItem('auth_token');
+        }
+        
+        // Función para verificar autenticación
+        function checkAuth() {
+            const token = getToken();
+            if (!token) {
+                window.location.href = '/auth/login/';
+                return false;
+            }
+            return true;
+        }
+        
+        // Cargar información del usuario
+        async function loadUserInfo() {
+            if (!checkAuth()) return;
+            
+            try {
+                const response = await fetch('/api/usuarios/profile/', {
+                    headers: {
+                        'Authorization': `Bearer ${getToken()}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const user = await response.json();
+                    document.getElementById('userName').textContent = 
+                        `${user.first_name} ${user.last_name}`.trim() || user.email;
+                } else if (response.status === 401) {
+                    logout();
+                }
+            } catch (error) {
+                console.error('Error al cargar usuario:', error);
+            }
+        }
+        
+        // Función de logout
+        function logout() {
+            localStorage.removeItem('auth_token');
+            window.location.href = '/auth/login/';
+        }
+        
+        // Buscar calificaciones
+        async function buscarCalificaciones() {
+            if (!checkAuth()) return;
+            
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const tableBody = document.getElementById('tableBody');
+            
+            loadingIndicator.style.display = 'block';
+            tableBody.innerHTML = '';
+            
+            try {
+                const response = await fetch('/api/calificaciones/', {
+                    headers: {
+                        'Authorization': `Bearer ${getToken()}`
+                    }
+                });
+                
+                if (response.ok) {
+                    calificaciones = await response.json();
+                    renderTable();
+                    showMessage('Calificaciones cargadas correctamente', 'success');
+                } else if (response.status === 401) {
+                    logout();
+                } else {
+                    throw new Error('Error al cargar calificaciones');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('Error al cargar las calificaciones', 'error');
+                tableBody.innerHTML = '<tr><td colspan="13" class="no-data">Error al cargar datos</td></tr>';
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        }
+        
+        // Renderizar tabla
+        function renderTable() {
+            const tableBody = document.getElementById('tableBody');
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const pageData = calificaciones.slice(start, end);
+            
+            if (pageData.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="13" class="no-data">No hay registros para mostrar</td></tr>';
+                return;
+            }
+            
+            tableBody.innerHTML = pageData.map(cal => `
+                <tr class="${selectedRows.has(cal.id) ? 'selected' : ''}" data-id="${cal.id}">
+                    <td><input type="checkbox" ${selectedRows.has(cal.id) ? 'checked' : ''} 
+                        onchange="toggleRow(${cal.id})"></td>
+                    <td>${cal.anno || ''}</td>
+                    <td>${cal.instrumento || ''}</td>
+                    <td>${cal.fecha_pago || ''}</td>
+                    <td>${cal.descripcion || ''}</td>
+                    <td>${cal.secuencia_evento || ''}</td>
+                    <td>${cal.factor_actualizacion || ''}</td>
+                    <td>${cal.factor8 || '0.00000000'}</td>
+                    <td>${cal.factor9 || '0.00000000'}</td>
+                    <td>${cal.factor10 || '0.00000000'}</td>
+                    <td>${cal.factor11 || '0.00000000'}</td>
+                    <td>${cal.factor12 || '0.00000000'}</td>
+                    <td>
+                        <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.8em;" 
+                            onclick="editarCalificacion(${cal.id})">✏️</button>
+                    </td>
+                </tr>
+            `).join('');
+            
+            updatePagination();
+        }
+        
+        // Actualizar paginación
+        function updatePagination() {
+            const total = calificaciones.length;
+            const start = (currentPage - 1) * itemsPerPage + 1;
+            const end = Math.min(start + itemsPerPage - 1, total);
+            
+            document.getElementById('paginationInfo').textContent = 
+                `Elementos mostrados ${start} - ${end} de ${total}`;
+            document.getElementById('currentPage').textContent = currentPage;
+        }
+        
+        // Cambiar página
+        function cambiarPagina(action) {
+            const totalPages = Math.ceil(calificaciones.length / itemsPerPage);
+            
+            switch(action) {
+                case 'first':
+                    currentPage = 1;
+                    break;
+                case 'prev':
+                    if (currentPage > 1) currentPage--;
+                    break;
+                case 'next':
+                    if (currentPage < totalPages) currentPage++;
+                    break;
+                case 'last':
+                    currentPage = totalPages;
+                    break;
+            }
+            
+            renderTable();
+        }
+        
+        // Toggle selección
+        function toggleRow(id) {
+            if (selectedRows.has(id)) {
+                selectedRows.delete(id);
+            } else {
+                selectedRows.add(id);
+            }
+            renderTable();
+        }
+        
+        function toggleSelectAll() {
+            const checkboxes = document.querySelectorAll('#tableBody input[type="checkbox"]');
+            const selectAll = document.getElementById('selectAll').checked;
+            
+            checkboxes.forEach(cb => {
+                const id = parseInt(cb.closest('tr').dataset.id);
+                if (selectAll) {
+                    selectedRows.add(id);
+                } else {
+                    selectedRows.delete(id);
+                }
+            });
+            
+            renderTable();
+        }
+        
+        // Abrir modal para ingresar
+        function abrirModalIngresar() {
+            editingId = null;
+            document.getElementById('modalTitle').textContent = 'Ingresar Calificación';
+            document.getElementById('calificacionForm').reset();
+            document.getElementById('modalCalificacion').classList.add('active');
+        }
+        
+        // Editar calificación
+        function editarCalificacion(id) {
+            const cal = calificaciones.find(c => c.id === id);
+            if (!cal) return;
+            
+            editingId = id;
+            document.getElementById('modalTitle').textContent = 'Modificar Calificación';
+            
+            // Llenar formulario
+            document.getElementById('mercado').value = cal.mercado || '';
+            document.getElementById('instrumento').value = cal.instrumento || '';
+            document.getElementById('descripcion').value = cal.descripcion || '';
+            document.getElementById('fecha_pago').value = cal.fecha_pago || '';
+            document.getElementById('secuencia_evento').value = cal.secuencia_evento || '';
+            document.getElementById('dividendo').value = cal.dividendo || '';
+            document.getElementById('anno').value = cal.anno || '';
+            document.getElementById('factor_actualizacion').value = cal.factor_actualizacion || '';
+            document.getElementById('isfut').value = cal.isfut || '';
+            document.getElementById('valor_historico').value = cal.valor_historico || '';
+            document.getElementById('ingreso_montos').value = cal.ingreso_montos || '';
+            
+            document.getElementById('modalCalificacion').classList.add('active');
+        }
+        
+        // Cerrar modal
+        function cerrarModal() {
+            document.getElementById('modalCalificacion').classList.remove('active');
+            editingId = null;
+        }
+        
+        // Guardar calificación
+        document.getElementById('calificacionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const data = {
+                mercado: document.getElementById('mercado').value,
+                instrumento: document.getElementById('instrumento').value,
+                descripcion: document.getElementById('descripcion').value,
+                fecha_pago: document.getElementById('fecha_pago').value,
+                secuencia_evento: parseInt(document.getElementById('secuencia_evento').value) || null,
+                dividendo: parseInt(document.getElementById('dividendo').value) || null,
+                anno: parseInt(document.getElementById('anno').value),
+                factor_actualizacion: document.getElementById('factor_actualizacion').value || null,
+                isfut: parseInt(document.getElementById('isfut').value) || null,
+                valor_historico: document.getElementById('valor_historico').value || null,
+                ingreso_montos: parseInt(document.getElementById('ingreso_montos').value) || null
+            };
+            
+            try {
+                const url = editingId 
+                    ? `/api/calificaciones/${editingId}/`
+                    : '/api/calificaciones/';
+                    
+                const method = editingId ? 'PUT' : 'POST';
+                
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getToken()}`
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    showMessage(
+                        editingId ? 'Calificación actualizada' : 'Calificación creada', 
+                        'success'
+                    );
+                    cerrarModal();
+                    buscarCalificaciones();
+                } else {
+                    const error = await response.json();
+                    showMessage('Error: ' + JSON.stringify(error), 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('Error al guardar la calificación', 'error');
+            }
+        });
+        
+        // Eliminar seleccionado
+        async function eliminarSeleccionado() {
+            if (selectedRows.size === 0) {
+                showMessage('Selecciona al menos una calificación', 'error');
+                return;
+            }
+            
+            if (!confirm(`¿Eliminar ${selectedRows.size} calificación(es)?`)) return;
+            
+            for (const id of selectedRows) {
+                try {
+                    await fetch(`/api/calificaciones/${id}/`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${getToken()}`
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error al eliminar:', error);
+                }
+            }
+            
+            selectedRows.clear();
+            showMessage('Calificaciones eliminadas', 'success');
+            buscarCalificaciones();
+        }
+        
+        // Modificar seleccionado
+        function modificarSeleccionado() {
+            if (selectedRows.size !== 1) {
+                showMessage('Selecciona exactamente una calificación', 'error');
+                return;
+            }
+            
+            const id = Array.from(selectedRows)[0];
+            editarCalificacion(id);
+        }
+        
+        // Copiar seleccionado
+        function copiarSeleccionado() {
+            if (selectedRows.size !== 1) {
+                showMessage('Selecciona exactamente una calificación', 'error');
+                return;
+            }
+            
+            const id = Array.from(selectedRows)[0];
+            const cal = calificaciones.find(c => c.id === id);
+            if (!cal) return;
+            
+            // Cargar datos en el formulario sin el ID (para crear nuevo)
+            editingId = null;
+            document.getElementById('modalTitle').textContent = 'Copiar Calificación';
+            
+            document.getElementById('mercado').value = cal.mercado || '';
+            document.getElementById('instrumento').value = cal.instrumento || '';
+            document.getElementById('descripcion').value = cal.descripcion || '';
+            document.getElementById('fecha_pago').value = cal.fecha_pago || '';
+            document.getElementById('secuencia_evento').value = cal.secuencia_evento || '';
+            document.getElementById('dividendo').value = cal.dividendo || '';
+            document.getElementById('anno').value = cal.anno || '';
+            document.getElementById('factor_actualizacion').value = cal.factor_actualizacion || '';
+            document.getElementById('isfut').value = cal.isfut || '';
+            document.getElementById('valor_historico').value = cal.valor_historico || '';
+            document.getElementById('ingreso_montos').value = cal.ingreso_montos || '';
+            
+            document.getElementById('modalCalificacion').classList.add('active');
+        }
+        
+        // Limpiar filtros
+        function limpiarFiltros() {
+            document.getElementById('filterMercado').value = '';
+            document.getElementById('filterOrigen').value = '';
+            document.getElementById('filterCorredor').value = '';
+            document.getElementById('filterAnno').value = '';
+            document.getElementById('filterPendiente').checked = false;
+        }
+        
+        // Mostrar mensajes
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type} active`;
+            
+            setTimeout(() => {
+                messageDiv.classList.remove('active');
+            }, 5000);
+        }
+        
+        // Cerrar modal al hacer clic fuera
+        document.getElementById('modalCalificacion').addEventListener('click', (e) => {
+            if (e.target.id === 'modalCalificacion') {
+                cerrarModal();
+            }
+        });
+        
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', () => {
+            if (checkAuth()) {
+                loadUserInfo();
+                // Opcional: cargar datos automáticamente
+                // buscarCalificaciones();
+            }
+        });
+    </script>
+</body>
+</html>

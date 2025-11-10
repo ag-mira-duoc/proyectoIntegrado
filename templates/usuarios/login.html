@@ -56,25 +56,26 @@
                 const messageDiv = document.getElementById('message');
                 
                 if (response.ok) {
-                    // 1. Mostrar mensaje de éxito
+                    // Mostrar mensaje de éxito
                     messageDiv.className = 'message success';
                     messageDiv.textContent = result.message || '¡Login exitoso! Redireccionando...';
                     
-                    // 2. **Guardar el Token**
-                    localStorage.setItem('auth_token', result.token); 
+                    // Guardar tokens JWT
+                    if (result.tokens) {
+                        localStorage.setItem('auth_token', result.tokens.access);
+                        localStorage.setItem('refresh_token', result.tokens.refresh);
+                    }
                     
-                    // 3. **REDIRECCIÓN DESDE EL CLIENTE**
+                    // Redirección a calificaciones
                     setTimeout(() => {
                         window.location.href = '/calificaciones/';
                     }, 1000);
 
                 } else {
-                    // Manejo de errores 400/401
                     messageDiv.className = 'message error';
                     messageDiv.textContent = result.message || 'Correo o contraseña incorrecto. Inténtalo de nuevo.'; 
                 }
             } catch (error) {
-                // Manejo de errores de conexión o parsing
                 messageDiv.className = 'message error';
                 messageDiv.textContent = 'Error de conexión con el servidor.';
                 console.error('Error de red/petición:', error);
