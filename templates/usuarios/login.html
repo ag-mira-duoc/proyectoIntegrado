@@ -1,0 +1,85 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <div class="form-container">
+        <h2>Iniciar Sesión</h2>
+        <form id="loginForm">
+            {% csrf_token %} 
+            <input type="email" id="email" name="email" placeholder="Email" required>
+            <input type="password" id="password" name="password" placeholder="Contraseña" required>
+            <button type="submit">Entrar</button>
+        </form>
+        <div id="message"></div>
+        <div class="links">
+            <a href='{% url "usuarios:signup" %}'>¿No tienes cuenta? Regístrate</a>
+            <span>|</span>
+            <a href="/">Volver al inicio</a>
+        </div>
+    </div>
+
+    <script>
+        function getCsrfToken() {
+            return document.querySelector('[name="csrfmiddlewaretoken"]').value;
+        }
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const data = {
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value
+            };
+            
+            const csrfToken = getCsrfToken();
+            const messageDiv = document.getElementById('message');
+
+            messageDiv.innerHTML = '';
+
+            try {
+                const response = await fetch('{% url "usuarios:login" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken 
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                //console.log('Respuesta del servidor:', response.status, result);
+                const messageDiv = document.getElementById('message');
+                
+                if (response.ok) {
+                    // 1. Mostrar mensaje de éxito
+                    messageDiv.className = 'message success';
+                    messageDiv.textContent = result.message || '¡Login exitoso! Redireccionando...';
+                    
+                    // 2. **Guardar el Token**
+                    localStorage.setItem('auth_token', result.token); 
+                    
+                    // 3. **REDIRECCIÓN DESDE EL CLIENTE**
+                    setTimeout(() => {
+                        window.location.href = '/calificaciones/';
+                    }, 1000);
+
+                } else {
+                    // Manejo de errores 400/401
+                    messageDiv.className = 'message error';
+                    messageDiv.textContent = result.message || 'Correo o contraseña incorrecto. Inténtalo de nuevo.'; 
+                }
+            } catch (error) {
+                // Manejo de errores de conexión o parsing
+                messageDiv.className = 'message error';
+                messageDiv.textContent = 'Error de conexión con el servidor.';
+                console.error('Error de red/petición:', error);
+            }
+        });
+    </script>
+</body>
+</html>

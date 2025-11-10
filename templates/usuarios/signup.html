@@ -1,0 +1,82 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <div class="form-container">
+        <h2>Registro</h2>
+        <form id="signupForm">
+            {% csrf_token %} 
+            <input type="text" id="nombre" placeholder="Nombre" required>
+            <input type="text" id="apellido" placeholder="Apellido" required>
+            <input type="text" id="rut" placeholder="RUT (ej: 12345678-9)" required>
+            <input type="email" id="email" placeholder="Email" required>
+            <input type="password" id="password" placeholder="Contraseña" required>
+            <button type="submit">Crear Cuenta</button>
+        </form>
+        <div id="message"></div>
+        <div class="links">
+            <a href='{% url "usuarios:login" %}'>¿Ya tienes cuenta? Inicia sesión</a>
+            <span>|</span>
+            <a href="/">Volver al inicio</a>
+        </div>
+    </div>
+
+    <script>
+        function getCsrfToken() {
+            return document.querySelector('[name="csrfmiddlewaretoken"]').value;
+        }
+
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const data = {
+                first_name: document.getElementById('nombre').value,
+                last_name: document.getElementById('apellido').value,
+                rut: document.getElementById('rut').value,
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value
+            };
+
+            const csrfToken = getCsrfToken();
+            
+            try {
+                const response = await fetch('{% url "usuarios:signup" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                const messageDiv = document.getElementById('message');
+                
+                if (response.ok) {
+                    messageDiv.className = 'message success';
+                    messageDiv.textContent = result.message;
+
+                    localStorage.setItem('auth_token', result.token); 
+
+                    document.getElementById('signupForm').reset();
+                    setTimeout(() => {
+                        window.location.href = '{% url "usuarios:login" %}';
+                    }, 2000);
+                } else {
+                    messageDiv.className = 'message error';
+                    messageDiv.textContent = JSON.stringify(result);
+                }
+            } catch (error) {
+                document.getElementById('message').className = 'message error';
+                document.getElementById('message').textContent = 'Error: ' + error;
+            }
+        });
+    </script>
+</body>
+</html>
