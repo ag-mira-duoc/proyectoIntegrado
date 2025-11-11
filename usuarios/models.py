@@ -33,10 +33,17 @@ class TipoUsuario(models.Model):
         db_table = 'tipo_usuario'
 
 class User(AbstractUser):
+    username = None
     email = models.CharField(max_length=80, unique=True)
     rut = models.CharField(max_length=11, unique=True)
-    corredora = models.ForeignKey('acciones.Corredora', models.DO_NOTHING, blank=True, null=True
-)
+    corredora = models.ForeignKey('acciones.Corredora', models.DO_NOTHING, blank=True, null=True)
+
+    tipo_usuario = models.ForeignKey(
+        'TipoUsuario', 
+        on_delete=models.SET_NULL,
+        null=True, 
+        default=1
+    )
 
     created = models.DateTimeField(auto_now_add=True)
 

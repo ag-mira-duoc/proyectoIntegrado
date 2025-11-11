@@ -52,21 +52,17 @@
                 });
 
                 const result = await response.json();
-                //console.log('Respuesta del servidor:', response.status, result);
                 const messageDiv = document.getElementById('message');
                 
                 if (response.ok) {
-                    // Mostrar mensaje de éxito
                     messageDiv.className = 'message success';
                     messageDiv.textContent = result.message || '¡Login exitoso! Redireccionando...';
                     
-                    // Guardar tokens JWT
                     if (result.tokens) {
                         localStorage.setItem('auth_token', result.tokens.access);
                         localStorage.setItem('refresh_token', result.tokens.refresh);
                     }
                     
-                    // Redirección  
                     const finalRedirectUrl = result.redirect_url || '/calificaciones/';
 
                     setTimeout(() => {

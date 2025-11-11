@@ -99,7 +99,6 @@
                 <button class="close-modal" onclick="cerrarModalDetalleUsuario()">&times;</button>
             </div>
             <div id="detalle-usuario">
-                <!-- Aquí se cargará el detalle dinámicamente -->
             </div>
         </div>
     </div>
@@ -128,7 +127,6 @@
 
         function buscarSolicitud() {
             const busqueda = document.getElementById('busqueda').value;
-            // Implementar lógica de búsqueda
             console.log('Buscando:', busqueda);
         }
 
@@ -209,7 +207,6 @@
                 return response.json();
             })
             .then(data => {
-                // Comprobamos la presencia de datos y los mostramos
                 let html = '';
                 html += `<div class="info-row"><span class="info-label">Nombre:</span><span class="info-value">${data.first_name || ''} ${data.last_name || ''}</span></div>`;
                 html += `<div class="info-row"><span class="info-label">Email:</span><span class="info-value">${data.email || ''}</span></div>`;

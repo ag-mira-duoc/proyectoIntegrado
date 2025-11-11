@@ -12,6 +12,11 @@ from .models import User
 from .serializers import SignupSerializer, CurrentUserCalificacionesSerializer, UserApprovalSerializer
 from .tokens import create_jwt_pair_for_user
 
+TIPO_USUARIO_PENDIENTE = 1
+TIPO_USUARIO_ACTIVO = 2
+TIPO_USUARIO_ADMIN = 3
+TIPO_USUARIO_AUDITOR = 4
+
 class SignUpView(generics.GenericAPIView):
     serializer_class = SignupSerializer
     permission_classes = [AllowAny]
@@ -72,14 +77,14 @@ class LoginView(APIView):
         user = authenticate(email=email, password=password)
 
         if user is not None:
-            if not user.is_active:
-                return Response(
-                    data={"message": "Tu cuenta está pendiente de aprobación por un administrador."},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-            
+            if user.tipo_usuario_id == TIPO_USUARIO_PENDIENTE:
+                 return Response(
+                     data={"message": "Tu cuenta está pendiente de aprobación por un administrador."},
+                     status=status.HTTP_403_FORBIDDEN
+                 )
             redirect_url = '/calificaciones/'
-            if user.is_staff:
+
+            if user.tipo_usuario_id == TIPO_USUARIO_ADMIN:
                 redirect_url = '/auth/admin/dashboard/'
 
             tokens = create_jwt_pair_for_user(user)
@@ -149,7 +154,7 @@ class AdminDashboardView(APIView):
         return [TemplateHTMLRenderer()]
 
     def get(self, request):
-        pending_users = User.objects.filter(is_active=False, is_staff=False).order_by('-date_joined')
+        pending_users = User.objects.filter(tipo_usuario_id=TIPO_USUARIO_PENDIENTE).order_by('-date_joined')
         
         pending_users_data = UserApprovalSerializer(
             pending_users, 
@@ -164,7 +169,7 @@ class AdminDashboardView(APIView):
             "pending_count": pending_users.count(),
             "pending_users": pending_users_data,
             "corredoras": list(corredoras),
-            "total_users": User.objects.filter(is_active=True, is_staff=False).count(),
+            "total_users": User.objects.filter(tipo_usuario_id=TIPO_USUARIO_ACTIVO, is_staff=False).count(),
             "total_corredoras": Corredora.objects.count()
         }
         
@@ -174,13 +179,13 @@ class AdminDashboardView(APIView):
 @permission_classes([IsAuthenticated, IsAdminUser])
 def approve_user(request: Request, user_id: int):
     try:
-        user = User.objects.get(id=user_id, is_active=False)
+        user = User.objects.get(id=user_id, tipo_usuario_id=TIPO_USUARIO_PENDIENTE)
         
         nueva_corredora_id = request.data.get('corredora')
         if nueva_corredora_id:
             user.corredora_id = nueva_corredora_id
-        
-        user.is_active = True
+
+        user.tipo_usuario_id = TIPO_USUARIO_ACTIVO
         user.save()
         
         return Response({
@@ -198,7 +203,7 @@ def approve_user(request: Request, user_id: int):
 @permission_classes([IsAuthenticated, IsAdminUser])
 def reject_user(request: Request, user_id: int):
     try:
-        user = User.objects.get(id=user_id, is_active=False)
+        user = User.objects.get(id=user_id, tipo_usuario_id = TIPO_USUARIO_PENDIENTE)
         email = user.email
         user.delete()
         
@@ -215,7 +220,7 @@ def reject_user(request: Request, user_id: int):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsAdminUser])
 def pending_users_list(request: Request):
-    pending_users = User.objects.filter(is_active=False, is_staff=False).order_by('-date_joined')
+    pending_users = User.objects.filter(tipo_usuario_id=TIPO_USUARIO_PENDIENTE, is_staff=False).order_by('-date_joined')
     serializer = UserApprovalSerializer(pending_users, many=True, context={'request': request})
     
     return Response({

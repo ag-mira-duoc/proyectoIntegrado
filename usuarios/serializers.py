@@ -39,11 +39,16 @@ class SignupSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('password2')
         password = validated_data.pop("password")
-        validated_data['is_active'] = False
-        validated_data['username'] = validated_data['email']
-        user = super().create(validated_data)
-        user.set_password(password)
-        user.save()
+        
+        user = User.objects.create_user(
+            email=validated_data['email'],
+            password=password,
+            rut=validated_data['rut'],
+            first_name=validated_data['first_name'],
+            last_name=validated_data['last_name'],
+            corredora=validated_data.get('corredora')
+        )
+    
         return user
 
 class CurrentUserCalificacionesSerializer(serializers.ModelSerializer):
@@ -93,8 +98,9 @@ class UserApprovalSerializer(serializers.ModelSerializer):
             instance.corredora = corredora
 
         if approve_status is True:
-            instance.is_active = True
-            instance.save()
+            #instance.is_active = True
+            #instance.save()
+            pass
         
         if reject_status is True:
             instance.delete()
