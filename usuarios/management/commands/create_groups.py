@@ -39,16 +39,16 @@ class Command(BaseCommand):
             )
         
         # ===== GRUPO: Lectores =====
-        lector_group, created = Group.objects.get_or_create(name='Lectores')
+        auditor_group, created = Group.objects.get_or_create(name='Auditores')
         if created:
             # Solo pueden ver calificaciones
-            permisos_lector = Permission.objects.filter(
+            permisos_auditor = Permission.objects.filter(
                 content_type=calificacion_ct,
                 codename='view_calificacion'
             )
-            lector_group.permissions.set(permisos_lector)
+            auditor_group.permissions.set(permisos_auditor)
             self.stdout.write(
-                self.style.SUCCESS('✓ Grupo "Lectores" creado')
+                self.style.SUCCESS('✓ Grupo "Auditores creado')
             )
         
         self.stdout.write(

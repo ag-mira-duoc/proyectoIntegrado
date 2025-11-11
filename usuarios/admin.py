@@ -1,14 +1,9 @@
-
-# Register your models here.
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import User, TipoUsuario
 
 @admin.register(User)
-class CustomUserAdmin(UserAdmin):
-    """
-    Administrador personalizado para el modelo User
-    """
+class UsuarioAdmin(UserAdmin):
     list_display = ['email', 'first_name', 'last_name', 'rut', 'is_staff', 'is_active', 'created']
     list_filter = ['is_staff', 'is_active', 'is_superuser', 'created']
     search_fields = ['email', 'first_name', 'last_name', 'rut']
@@ -16,24 +11,24 @@ class CustomUserAdmin(UserAdmin):
     
     fieldsets = (
         ('Información Personal', {
-            'fields': ('email', 'rut', 'first_name', 'last_name', 'password')
+            'fields': ('email', 'rut', 'first_name', 'last_name', 'username', 'password')
         }),
         ('Permisos', {
             'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
         }),
         ('Información Adicional', {
-            'fields': ('corredora', 'created'),
+            'fields': ('corredora', 'last_login', 'date_joined'),
         }),
     )
     
     add_fieldsets = (
         ('Crear Usuario', {
             'classes': ('wide',),
-            'fields': ('email', 'rut', 'first_name', 'last_name', 'password1', 'password2', 'is_staff', 'is_active'),
+            'fields': ('email', 'rut', 'username', 'first_name', 'last_name', 'password1', 'password2', 'is_staff', 'is_active'),
         }),
     )
     
-    readonly_fields = ['created']
+    readonly_fields = ['last_login', 'date_joined']
 
 @admin.register(TipoUsuario)
 class TipoUsuarioAdmin(admin.ModelAdmin):
