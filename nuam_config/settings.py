@@ -57,8 +57,9 @@ INSTALLED_APPS = [
     'corsheaders',
     'crispy_forms',
     'crispy_bootstrap5',
-    'django_celery_beat',
-    'django_celery_results',
+    # NOTA: Celery comentado - agregar después con Redis/Upstash
+    # 'django_celery_beat',
+    # 'django_celery_results',
 
     # Apps del proyecto NUAM
     'usuarios',
@@ -296,19 +297,20 @@ CORS_ALLOW_CREDENTIALS = True
 # ==============================================================================
 # CONFIGURACIÓN DE CELERY (Tareas Asíncronas)
 # ==============================================================================
+# NOTA: Comentado temporalmente - descomentar cuando agregues Redis/Upstash
 
-CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = 'django-db'  # Almacenar resultados en PostgreSQL
-CELERY_CACHE_BACKEND = 'default'
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = TIME_ZONE
-CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutos máximo por tarea
+# CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
+# CELERY_RESULT_BACKEND = 'django-db'  # Almacenar resultados en PostgreSQL
+# CELERY_CACHE_BACKEND = 'default'
+# CELERY_ACCEPT_CONTENT = ['json']
+# CELERY_TASK_SERIALIZER = 'json'
+# CELERY_RESULT_SERIALIZER = 'json'
+# CELERY_TIMEZONE = TIME_ZONE
+# CELERY_TASK_TRACK_STARTED = True
+# CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutos máximo por tarea
 
 # Configuración de Celery Beat (Tareas programadas)
-CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+# CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 
 # ==============================================================================
@@ -417,18 +419,25 @@ LOGGING = {
 # ==============================================================================
 # CONFIGURACIÓN DE CACHÉ
 # ==============================================================================
+# NOTA: Redis comentado - usando caché en memoria temporalmente
+# Descomentar Redis cuando agregues Upstash
 
 CACHES = {
     'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': config('REDIS_URL', default='redis://localhost:6379/1'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'PARSER_CLASS': 'redis.connection.HiredisParser',
-            'PICKLE_VERSION': -1,
-        },
-        'KEY_PREFIX': 'nuam',
-        'TIMEOUT': 300,  # 5 minutos por defecto
+        # Caché en memoria (temporal - sin Redis)
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+
+        # Redis (descomentar cuando agregues Upstash)
+        # 'BACKEND': 'django_redis.cache.RedisCache',
+        # 'LOCATION': config('REDIS_URL', default='redis://localhost:6379/1'),
+        # 'OPTIONS': {
+        #     'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        #     'PARSER_CLASS': 'redis.connection.HiredisParser',
+        #     'PICKLE_VERSION': -1,
+        # },
+        # 'KEY_PREFIX': 'nuam',
+        # 'TIMEOUT': 300,  # 5 minutos por defecto
     }
 }
 
@@ -458,21 +467,22 @@ FIELD_ENCRYPTION_KEY = config('FIELD_ENCRYPTION_KEY', default=None)
 # ==============================================================================
 # CONFIGURACIÓN DE DJANGO-AXES (Límite de intentos de login)
 # ==============================================================================
+# NOTA: Comentado - agregar después cuando instales django-axes
 
 # Bloquear después de 5 intentos fallidos
-AXES_FAILURE_LIMIT = 5
+# AXES_FAILURE_LIMIT = 5
 
 # Cooldown de 30 minutos
-AXES_COOLOFF_TIME = timedelta(minutes=30)
+# AXES_COOLOFF_TIME = timedelta(minutes=30)
 
 # Bloquear por combinación de usuario + IP
-AXES_LOCK_OUT_BY_COMBINATION_USER_AND_IP = True
+# AXES_LOCK_OUT_BY_COMBINATION_USER_AND_IP = True
 
 # Usar caché para almacenar intentos
-AXES_CACHE = 'default'
+# AXES_CACHE = 'default'
 
 # Solo bloquear intentos del admin y login
-AXES_ONLY_ADMIN_SITE = False
+# AXES_ONLY_ADMIN_SITE = False
 
 
 # ==============================================================================
