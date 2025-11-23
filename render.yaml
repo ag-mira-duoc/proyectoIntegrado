@@ -27,7 +27,7 @@ services:
   - type: web
     name: nuam-web
     runtime: python
-    plan: starter  # Cambiar a 'standard' o 'pro' para producción
+    plan: free  # Cambiar a 'standard' o 'pro' para producción
     region: oregon  # Cambiar según necesidad (oregon, frankfurt, singapore)
 
     # Build
@@ -126,7 +126,7 @@ services:
   - type: worker
     name: nuam-celery-worker
     runtime: python
-    plan: starter
+    plan: free
     region: oregon
 
     # Build (mismo que web service)
@@ -178,7 +178,7 @@ services:
   - type: worker
     name: nuam-celery-beat
     runtime: python
-    plan: starter
+    plan: free
     region: oregon
 
     buildCommand: |
@@ -225,7 +225,7 @@ databases:
   - name: nuam-postgres
     databaseName: nuam_production
     user: nuam_user
-    plan: starter  # Cambiar a 'standard' o 'pro' para producción
+    plan: free  # Cambiar a 'standard' o 'pro' para producción
     region: oregon
 
     # PostgreSQL version
