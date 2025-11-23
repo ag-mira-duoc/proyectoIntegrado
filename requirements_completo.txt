@@ -1,6 +1,7 @@
 # ==============================================================================
-# REQUIREMENTS.TXT SIMPLIFICADO PARA DEPLOYMENT EN RENDER
-# Solo dependencias esenciales para producción
+# REQUIREMENTS.TXT PARA PROYECTO NUAM
+# Proyecto académico - Sistema de Calificaciones Tributarias
+# Stack: Django 5.2.7 + PostgreSQL + Firebase + Celery + OCR
 # ==============================================================================
 
 # ==============================================================================
@@ -38,13 +39,14 @@ crispy-bootstrap5==2025.6
 
 
 # ==============================================================================
-# CELERY & ASYNC TASKS (Opcional - solo si usas Celery)
+# CELERY & ASYNC TASKS
 # ==============================================================================
 celery==5.4.0
 redis==5.2.0
 django-celery-beat==2.7.0
 django-celery-results==2.5.1
 django-redis==5.4.0
+hiredis==3.1.0
 
 
 # ==============================================================================
@@ -99,15 +101,87 @@ et-xmlfile==2.0.0
 
 
 # ==============================================================================
-# NOTAS
+# TESTING
+# ==============================================================================
+pytest==8.3.4
+pytest-django==4.9.0
+pytest-cov==6.0.0
+pytest-xdist==3.6.1
+factory-boy==3.3.1
+faker==33.1.0
+
+
+# ==============================================================================
+# TESTING DE SEGURIDAD
+# ==============================================================================
+bandit==1.8.0
+
+
+# ==============================================================================
+# CODE QUALITY & LINTING
+# ==============================================================================
+black==24.10.0
+flake8==7.1.1
+isort==5.13.2
+pylint==3.3.2
+pylint-django==2.6.1
+
+
+# ==============================================================================
+# DESARROLLO (solo para local, comentar en producción)
+# ==============================================================================
+django-debug-toolbar==4.4.6
+ipython==8.31.0
+django-extensions==3.2.3
+
+
+# ==============================================================================
+# NOTAS DE INSTALACIÓN
 # ==============================================================================
 #
-# TESTING: Para desarrollo local, instalar por separado:
-# pip install pytest pytest-django pytest-cov factory-boy faker
+# INSTALACIÓN COMPLETA:
+# pip install -r requirements.txt
 #
-# LINTING: Para desarrollo local, instalar por separado:
-# pip install black flake8 isort pylint pylint-django
+# INSTALACIÓN SIN HERRAMIENTAS DE DESARROLLO:
+# pip install -r requirements.txt --no-deps django-debug-toolbar ipython django-extensions
 #
-# DEBUG: Para desarrollo local, instalar por separado:
-# pip install django-debug-toolbar ipython django-extensions
+# ACTUALIZAR TODAS LAS DEPENDENCIAS:
+# pip install --upgrade -r requirements.txt
 #
+# GENERAR REQUIREMENTS DESDE ENTORNO ACTUAL:
+# pip freeze > requirements_frozen.txt
+#
+# ==============================================================================
+# DEPENDENCIAS DEL SISTEMA (instalar antes de pip install)
+# ==============================================================================
+#
+# UBUNTU/DEBIAN:
+# sudo apt-get update
+# sudo apt-get install -y \
+#     python3-dev \
+#     libpq-dev \
+#     tesseract-ocr \
+#     tesseract-ocr-spa \
+#     poppler-utils \
+#     redis-server \
+#     postgresql-client
+#
+# macOS (Homebrew):
+# brew install postgresql tesseract tesseract-lang poppler redis
+#
+# WINDOWS:
+# - Instalar Tesseract desde: https://github.com/UB-Mannheim/tesseract/wiki
+# - Instalar poppler desde: https://github.com/oschwartz10612/poppler-windows/releases/
+# - Instalar Redis desde: https://github.com/microsoftarchive/redis/releases
+# - Instalar PostgreSQL desde: https://www.postgresql.org/download/windows/
+#
+# ==============================================================================
+# RENDER ESPECÍFICO
+# ==============================================================================
+#
+# En Render, las dependencias del sistema se instalan automáticamente.
+# Solo asegurarse de que el Build Command incluya:
+#
+# pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+#
+# ==============================================================================
