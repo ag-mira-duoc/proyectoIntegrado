@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - NUAM{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-speedometer2"></i> Dashboard</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-calendar3"></i> Año: {{ anno_actual }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Estadísticas Generales -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Total Calificaciones
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ stats.total_calificaciones }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-file-earmark-text fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Calificaciones Aprobadas
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ stats.calificaciones_aprobadas }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-check-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Total Clientes
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ stats.total_clientes }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-people fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            En Revisión
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ stats.calificaciones_revision }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-hourglass-split fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos -->
+<div class="row mb-4">
+    <!-- Gráfico de Calificaciones por Estado -->
+    <div class="col-xl-6 col-lg-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-pie-chart"></i> Calificaciones por Estado
+                </h6>
+            </div>
+            <div class="card-body">
+                <canvas id="estadosChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico de Calificaciones por Mes -->
+    <div class="col-xl-6 col-lg-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-bar-chart-line"></i> Calificaciones por Mes ({{ anno_actual }})
+                </h6>
+            </div>
+            <div class="card-body">
+                <canvas id="mesesChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla de Actividad Reciente -->
+<div class="row">
+    <div class="col-lg-12 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-clock-history"></i> Calificaciones Recientes
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Cliente</th>
+                                <th>Año</th>
+                                <th>Estado</th>
+                                <th>Usuario</th>
+                                <th>Fecha</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for calificacion in calificaciones_recientes %}
+                            <tr>
+                                <td>#{{ calificacion.id }}</td>
+                                <td>{{ calificacion.cliente.get_nombre_completo }}</td>
+                                <td>{{ calificacion.anno }}</td>
+                                <td>
+                                    {% if calificacion.estado == 'APROBADA' %}
+                                        <span class="badge bg-success">{{ calificacion.get_estado_display }}</span>
+                                    {% elif calificacion.estado == 'REVISION' %}
+                                        <span class="badge bg-warning">{{ calificacion.get_estado_display }}</span>
+                                    {% elif calificacion.estado == 'RECHAZADA' %}
+                                        <span class="badge bg-danger">{{ calificacion.get_estado_display }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ calificacion.get_estado_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ calificacion.user.get_full_name }}</td>
+                                <td>{{ calificacion.created_at|date:"d/m/Y H:i" }}</td>
+                                <td>
+                                    <a href="{% url 'calificaciones:detalle' calificacion.pk %}" class="btn btn-sm btn-info">
+                                        <i class="bi bi-eye"></i> Ver
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">
+                                    No hay calificaciones recientes
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .border-left-primary {
+        border-left: 0.25rem solid #4e73df !important;
+    }
+    .border-left-success {
+        border-left: 0.25rem solid #1cc88a !important;
+    }
+    .border-left-info {
+        border-left: 0.25rem solid #36b9cc !important;
+    }
+    .border-left-warning {
+        border-left: 0.25rem solid #f6c23e !important;
+    }
+    .text-xs {
+        font-size: .7rem;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+// Gráfico de Estados
+const estadosCtx = document.getElementById('estadosChart').getContext('2d');
+const estadosChart = new Chart(estadosCtx, {
+    type: 'doughnut',
+    data: {
+        labels: {{ estados_labels|safe }},
+        datasets: [{
+            data: {{ estados_data|safe }},
+            backgroundColor: [
+                '#4e73df',
+                '#1cc88a',
+                '#36b9cc',
+                '#f6c23e',
+                '#e74a3b'
+            ],
+            hoverBackgroundColor: [
+                '#2e59d9',
+                '#17a673',
+                '#2c9faf',
+                '#dda20a',
+                '#be2617'
+            ],
+            hoverBorderColor: "rgba(234, 236, 244, 1)",
+        }],
+    },
+    options: {
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: true,
+                position: 'bottom',
+            }
+        },
+        cutout: '70%',
+    },
+});
+
+// Gráfico de Meses
+const mesesCtx = document.getElementById('mesesChart').getContext('2d');
+const mesesChart = new Chart(mesesCtx, {
+    type: 'bar',
+    data: {
+        labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+        datasets: [{
+            label: 'Calificaciones',
+            data: {{ meses_data|safe }},
+            backgroundColor: 'rgba(78, 115, 223, 0.8)',
+            borderColor: 'rgba(78, 115, 223, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    precision: 0
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

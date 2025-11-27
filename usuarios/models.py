@@ -206,7 +206,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         Corredora,
         on_delete=models.PROTECT,
         related_name='usuarios',
-        help_text="Corredora a la que pertenece el usuario"
+        null=True,
+        blank=True,
+        help_text="Corredora a la que pertenece el usuario (opcional para superusuarios)"
     )
 
     # Campos de identificación

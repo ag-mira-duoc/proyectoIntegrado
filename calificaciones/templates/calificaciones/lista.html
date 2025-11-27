@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+
+{% block title %}Calificaciones - NUAM{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-file-earmark-text"></i> Calificaciones Tributarias</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        {% if is_analista or is_administrador %}
+        <a href="{% url 'calificaciones:crear' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Nueva Calificación
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Año</label>
+                <select name="anno" class="form-select">
+                    <option value="">Todos</option>
+                    {% for year in years %}
+                    <option value="{{ year }}" {% if year|stringformat:"s" == request.GET.anno %}selected{% endif %}>
+                        {{ year }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Estado</label>
+                <select name="estado" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="BORRADOR" {% if request.GET.estado == 'BORRADOR' %}selected{% endif %}>Borrador</option>
+                    <option value="REVISION" {% if request.GET.estado == 'REVISION' %}selected{% endif %}>En Revisión</option>
+                    <option value="APROBADA" {% if request.GET.estado == 'APROBADA' %}selected{% endif %}>Aprobada</option>
+                    <option value="RECHAZADA" {% if request.GET.estado == 'RECHAZADA' %}selected{% endif %}>Rechazada</option>
+                    <option value="ENVIADA_SII" {% if request.GET.estado == 'ENVIADA_SII' %}selected{% endif %}>Enviada al SII</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Buscar Cliente</label>
+                <input type="text" name="search" class="form-control" placeholder="RUT o nombre..." value="{{ request.GET.search }}">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-secondary me-2">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+                <a href="{% url 'calificaciones:listado' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla de Calificaciones -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover" id="calificacionesTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Cliente</th>
+                        <th>RUT</th>
+                        <th>Año</th>
+                        <th>Estado</th>
+                        <th>Mercado</th>
+                        <th>Usuario</th>
+                        <th>Fecha Creación</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for calificacion in calificaciones %}
+                    <tr>
+                        <td>#{{ calificacion.id }}</td>
+                        <td>{{ calificacion.cliente.get_nombre_completo }}</td>
+                        <td>{{ calificacion.cliente.rut }}</td>
+                        <td>{{ calificacion.anno }}</td>
+                        <td>
+                            {% if calificacion.estado == 'APROBADA' %}
+                                <span class="badge bg-success">{{ calificacion.get_estado_display }}</span>
+                            {% elif calificacion.estado == 'REVISION' %}
+                                <span class="badge bg-warning text-dark">{{ calificacion.get_estado_display }}</span>
+                            {% elif calificacion.estado == 'RECHAZADA' %}
+                                <span class="badge bg-danger">{{ calificacion.get_estado_display }}</span>
+                            {% elif calificacion.estado == 'ENVIADA_SII' %}
+                                <span class="badge bg-info">{{ calificacion.get_estado_display }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ calificacion.get_estado_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if calificacion.mercado %}
+                                <span class="badge bg-light text-dark">{{ calificacion.get_mercado_display }}</span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ calificacion.user.get_short_name }}</td>
+                        <td>{{ calificacion.created_at|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'calificaciones:detalle' calificacion.pk %}" class="btn btn-info" title="Ver Detalle">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if is_analista or is_administrador %}
+                                    {% if calificacion.estado == 'BORRADOR' or calificacion.estado == 'REVISION' %}
+                                    <a href="{% url 'calificaciones:editar' calificacion.pk %}" class="btn btn-warning" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    {% endif %}
+                                {% endif %}
+                                {% if is_administrador %}
+                                <a href="{% url 'calificaciones:eliminar' calificacion.pk %}" class="btn btn-danger" title="Eliminar" onclick="return confirm('¿Está seguro de eliminar esta calificación?')">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                            <p class="mt-2">No se encontraron calificaciones</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginación -->
+        {% if is_paginated %}
+        <nav aria-label="Paginación">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if request.GET.anno %}&anno={{ request.GET.anno }}{% endif %}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                        Primera
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.anno %}&anno={{ request.GET.anno }}{% endif %}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                        Anterior
+                    </a>
+                </li>
+                {% endif %}
+
+                <li class="page-item active">
+                    <span class="page-link">
+                        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.anno %}&anno={{ request.GET.anno }}{% endif %}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                        Siguiente
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.anno %}&anno={{ request.GET.anno }}{% endif %}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                        Última
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // DataTables initialization (optional - si quieres ordenar la tabla)
+    // $('#calificacionesTable').DataTable({
+    //     "language": {
+    //         "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
+    //     }
+    // });
+});
+</script>
+{% endblock %}
