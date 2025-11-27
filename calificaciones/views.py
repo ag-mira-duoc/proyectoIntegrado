@@ -245,3 +245,132 @@ def reporte_calificaciones_por_agente(request):
     }
     
     return render(request, 'calificaciones/reporte_agentes.html', context)
+
+
+# ============================================================================
+# CRUD CLIENTES
+# ============================================================================
+
+@login_required
+@rol_requerido('Administradores', 'Analistas', 'Auditores')
+def clientes_lista(request):
+    clientes = Cliente.objects.filter(activo=True).order_by('rut')
+    return render(request, 'clientes/lista.html', {'clientes': clientes})
+
+
+@login_required
+@rol_requerido('Administradores', 'Analistas', 'Auditores')
+def cliente_detalle(request, pk):
+    cliente = get_object_or_404(Cliente, pk=pk)
+    return render(request, 'clientes/detalle.html', {'cliente': cliente})
+
+
+@login_required
+@analista_requerido
+def cliente_crear(request):
+    if request.method == 'POST':
+        tipo = request.POST.get('tipo')
+        cliente_form = ClienteForm(request.POST)
+        
+        if tipo == 'natural':
+            persona_form = PersonaNaturalForm(request.POST)
+        else:
+            persona_form = PersonaJuridicaForm(request.POST)
+        
+        if cliente_form.is_valid() and persona_form.is_valid():
+            cliente = cliente_form.save()
+            persona = persona_form.save(commit=False)
+            persona.cliente = cliente
+            persona.save()
+            messages.success(request, 'Cliente creado exitosamente.')
+            return redirect('clientes:detalle', pk=cliente.pk)
+    else:
+        cliente_form = ClienteForm()
+        persona_natural_form = PersonaNaturalForm()
+        persona_juridica_form = PersonaJuridicaForm()
+    
+    return render(request, 'clientes/form.html', {
+        'cliente_form': cliente_form if request.method == 'GET' else cliente_form,
+        'persona_natural_form': persona_natural_form if request.method == 'GET' else None,
+        'persona_juridica_form': persona_juridica_form if request.method == 'GET' else None,
+    })
+
+
+@login_required
+@analista_requerido
+def cliente_editar(request, pk):
+    cliente = get_object_or_404(Cliente, pk=pk)
+    es_natural = cliente.es_persona_natural()
+    
+    if request.method == 'POST':
+        cliente_form = ClienteForm(request.POST, instance=cliente)
+        if es_natural:
+            persona_form = PersonaNaturalForm(request.POST, instance=cliente.persona_natural)
+        else:
+            persona_form = PersonaJuridicaForm(request.POST, instance=cliente.persona_juridica)
+        
+        if cliente_form.is_valid() and persona_form.is_valid():
+            cliente_form.save()
+            persona_form.save()
+            messages.success(request, 'Cliente actualizado.')
+            return redirect('clientes:detalle', pk=pk)
+    else:
+        cliente_form = ClienteForm(instance=cliente)
+        if es_natural:
+            persona_form = PersonaNaturalForm(instance=cliente.persona_natural)
+        else:
+            persona_form = PersonaJuridicaForm(instance=cliente.persona_juridica)
+    
+    return render(request, 'clientes/form.html', {
+        'cliente_form': cliente_form,
+        'persona_form': persona_form,
+        'es_natural': es_natural,
+        'cliente': cliente,
+    })
+
+
+# ============================================================================
+# CRUD CORREDORAS
+# ============================================================================
+
+@login_required
+@administrador_requerido
+def corredoras_lista(request):
+    corredoras = Corredora.objects.all().order_by('nombre')
+    return render(request, 'corredoras/lista.html', {'corredoras': corredoras})
+
+
+@login_required
+@administrador_requerido
+def corredora_detalle(request, pk):
+    corredora = get_object_or_404(Corredora, pk=pk)
+    return render(request, 'corredoras/detalle.html', {'corredora': corredora})
+
+
+@login_required
+@administrador_requerido
+def corredora_crear(request):
+    if request.method == 'POST':
+        form = CorrederaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Corredora creada.')
+            return redirect('corredoras:listado')
+    else:
+        form = CorrederaForm()
+    return render(request, 'corredoras/form.html', {'form': form, 'form_title': 'Nueva Corredora'})
+
+
+@login_required
+@administrador_requerido
+def corredora_editar(request, pk):
+    corredora = get_object_or_404(Corredora, pk=pk)
+    if request.method == 'POST':
+        form = CorrederaForm(request.POST, instance=corredora)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Corredora actualizada.')
+            return redirect('corredoras:detalle', pk=pk)
+    else:
+        form = CorrederaForm(instance=corredora)
+    return render(request, 'corredoras/form.html', {'form': form, 'form_title': f'Editar {corredora.nombre}'})

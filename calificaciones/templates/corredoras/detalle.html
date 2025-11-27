@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}{{ corredora.nombre }} - NUAM{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">{{ corredora.nombre }}</h1>
+    <div><a href="{% url 'corredoras:editar' corredora.pk %}" class="btn btn-warning me-2"><i class="bi bi-pencil"></i> Editar</a>
+    <a href="{% url 'corredoras:listado' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Volver</a></div>
+</div>
+<table class="table">
+    <tr><th>Teléfono:</th><td>{{ corredora.telefono|default:"-" }}</td></tr>
+    <tr><th>Dirección:</th><td>{{ corredora.direccion|default:"-" }}</td></tr>
+    <tr><th>Email:</th><td>{{ corredora.email_contacto|default:"-" }}</td></tr>
+    <tr><th>Estado:</th><td>{% if corredora.activa %}<span class="badge bg-success">Activa</span>{% endif %}</td></tr>
+</table>
+{% endblock %}

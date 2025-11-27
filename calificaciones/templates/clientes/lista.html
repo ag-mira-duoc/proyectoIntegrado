@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}Clientes - NUAM{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-people"></i> Clientes</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        {% if is_analista or is_administrador %}
+        <a href="{% url 'clientes:crear' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Nuevo Cliente
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>RUT</th>
+                        <th>Nombre/Razón Social</th>
+                        <th>Tipo</th>
+                        <th>Teléfono</th>
+                        <th>Email</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cliente in clientes %}
+                    <tr>
+                        <td>{{ cliente.rut }}</td>
+                        <td>{{ cliente.get_nombre_completo }}</td>
+                        <td>
+                            {% if cliente.es_persona_natural %}
+                                <span class="badge bg-info">Persona Natural</span>
+                            {% else %}
+                                <span class="badge bg-primary">Persona Jurídica</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ cliente.telefono|default:"-" }}</td>
+                        <td>{{ cliente.correo|default:"-" }}</td>
+                        <td>
+                            {% if cliente.activo %}
+                                <span class="badge bg-success">Activo</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'clientes:detalle' cliente.pk %}" class="btn btn-info"><i class="bi bi-eye"></i></a>
+                                {% if is_analista or is_administrador %}
+                                <a href="{% url 'clientes:editar' cliente.pk %}" class="btn btn-warning"><i class="bi bi-pencil"></i></a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">No hay clientes registrados</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

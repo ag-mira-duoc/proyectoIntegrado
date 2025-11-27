@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}Cliente {{ cliente.rut }} - NUAM{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-person"></i> {{ cliente.get_nombre_completo }}</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        {% if is_analista or is_administrador %}
+        <a href="{% url 'clientes:editar' cliente.pk %}" class="btn btn-warning me-2"><i class="bi bi-pencil"></i> Editar</a>
+        {% endif %}
+        <a href="{% url 'clientes:listado' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Volver</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table table-borderless">
+            <tr><th>RUT:</th><td>{{ cliente.rut }}</td></tr>
+            <tr><th>Teléfono:</th><td>{{ cliente.telefono|default:"-" }}</td></tr>
+            <tr><th>Email:</th><td>{{ cliente.correo|default:"-" }}</td></tr>
+            {% if cliente.es_persona_natural %}
+                <tr><th>Nombre:</th><td>{{ cliente.persona_natural.nombre }}</td></tr>
+                <tr><th>Apellido:</th><td>{{ cliente.persona_natural.apellido }}</td></tr>
+            {% else %}
+                <tr><th>Razón Social:</th><td>{{ cliente.persona_juridica.razon_social }}</td></tr>
+                <tr><th>Domicilio:</th><td>{{ cliente.persona_juridica.domicilio_tributario }}</td></tr>
+                <tr><th>Giro:</th><td>{{ cliente.persona_juridica.giro|default:"-" }}</td></tr>
+            {% endif %}
+        </table>
+    </div>
+</div>
+{% endblock %}
