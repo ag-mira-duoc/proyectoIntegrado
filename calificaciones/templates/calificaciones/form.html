@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ form_title }} - NUAM{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-file-earmark-plus"></i> {{ form_title }}</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'calificaciones:listado' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card shadow">
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    <!-- Información General -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="bi bi-info-circle"></i> Información General</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    {{ form.cliente|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ form.anno|as_crispy_field }}
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    {{ form.mercado|as_crispy_field }}
+                                </div>
+                                <div class="col-md-4">
+                                    {{ form.instrumento|as_crispy_field }}
+                                </div>
+                                <div class="col-md-4">
+                                    {{ form.fecha_pago|as_crispy_field }}
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    {{ form.secuencia_evento|as_crispy_field }}
+                                </div>
+                                <div class="col-md-4">
+                                    {{ form.dividendo|as_crispy_field }}
+                                </div>
+                                <div class="col-md-4">
+                                    {{ form.factor_actualizacion|as_crispy_field }}
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    {{ form.valor_historico|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ form.descripcion|as_crispy_field }}
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch mt-3">
+                                        {{ form.isfut }}
+                                        <label class="form-check-label" for="{{ form.isfut.id_for_label }}">
+                                            Aplica ISFUT (Impuesto de Primera Categoría)
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch mt-3">
+                                        {{ form.ingreso_montos }}
+                                        <label class="form-check-label" for="{{ form.ingreso_montos.id_for_label }}">
+                                            Montos Ingresados
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Factores Tributarios (Factor 8 - Factor 37) -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0"><i class="bi bi-calculator"></i> Factores Tributarios (Formulario 1851 SII)</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-4">
+                                <i class="bi bi-info-circle"></i> 
+                                Ingrese los 30 factores tributarios según el formulario 1851 del SII.
+                                Todos los campos son opcionales.
+                            </p>
+                            
+                            <!-- Factores 8-17 -->
+                            <h6 class="text-primary border-bottom pb-2 mb-3">Factores 8-17</h6>
+                            <div class="row">
+                                {% for i in "012345" %}
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form|attr:"factor"|add:i|add:8|as_crispy_field }}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            
+                            <!-- Factores 18-27 -->
+                            <h6 class="text-primary border-bottom pb-2 mb-3 mt-4">Factores 18-27</h6>
+                            <div class="row">
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor18|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor19|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor20|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor21|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor22|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor23|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor24|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor25|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor26|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor27|as_crispy_field }}
+                                </div>
+                            </div>
+                            
+                            <!-- Factores 28-37 -->
+                            <h6 class="text-primary border-bottom pb-2 mb-3 mt-4">Factores 28-37</h6>
+                            <div class="row">
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor28|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor29|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor30|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor31|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor32|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor33|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor34|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor35|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor36|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor37|as_crispy_field }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Estado -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-warning">
+                            <h5 class="mb-0"><i class="bi bi-check-circle"></i> Estado</h5>
+                        </div>
+                        <div class="card-body">
+                            {{ form.estado|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <!-- Botones -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'calificaciones:listado' %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Guardar Calificación
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-check-input:checked {
+        background-color: #198754;
+        border-color: #198754;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Date picker para fecha_pago
+    $('#id_fecha_pago').attr('type', 'date');
+    
+    // Validación de números decimales
+    $('input[type="number"]').on('input', function() {
+        const value = $(this).val();
+        if (value < 0) {
+            $(this).val(0);
+        }
+    });
+});
+</script>
+{% endblock %}

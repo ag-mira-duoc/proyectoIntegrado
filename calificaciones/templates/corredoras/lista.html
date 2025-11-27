@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Corredoras - NUAM{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-building"></i> Corredoras</h1>
+    <a href="{% url 'corredoras:crear' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Nueva</a>
+</div>
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead><tr><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody>
+            {% for c in corredoras %}
+            <tr>
+                <td>{{ c.nombre }}</td>
+                <td>{{ c.telefono|default:"-" }}</td>
+                <td>{{ c.email_contacto|default:"-" }}</td>
+                <td>{% if c.activa %}<span class="badge bg-success">Activa</span>{% else %}<span class="badge bg-danger">Inactiva</span>{% endif %}</td>
+                <td>
+                    <a href="{% url 'corredoras:detalle' c.pk %}" class="btn btn-sm btn-info"><i class="bi bi-eye"></i></a>
+                    <a href="{% url 'corredoras:editar' c.pk %}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

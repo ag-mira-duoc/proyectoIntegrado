@@ -1,0 +1,118 @@
+# ==============================================================================
+# REQUIREMENTS.TXT SIMPLIFICADO PARA DEPLOYMENT EN RENDER
+# Solo dependencias esenciales para producción
+# ==============================================================================
+
+# ==============================================================================
+# CORE DJANGO
+# ==============================================================================
+Django==5.2.7
+asgiref==3.10.0
+sqlparse==0.5.3
+pytz==2025.2
+tzdata==2025.2
+
+
+# ==============================================================================
+# BASE DE DATOS - POSTGRESQL
+# ==============================================================================
+psycopg2-binary==2.9.10
+dj-database-url==2.2.0
+
+
+# ==============================================================================
+# DJANGO REST FRAMEWORK & API
+# ==============================================================================
+djangorestframework==3.16.1
+djangorestframework-simplejwt==5.5.1
+PyJWT==2.10.1
+django-filter==25.2
+django-cors-headers==4.6.0
+
+
+# ==============================================================================
+# FORMS & UI
+# ==============================================================================
+django-crispy-forms==2.3
+crispy-bootstrap5==2025.6
+
+
+# ==============================================================================
+# CELERY & ASYNC TASKS
+# ==============================================================================
+# NOTA: Comentado temporalmente - agregar después con Redis/Upstash
+# celery==5.4.0
+# redis==5.2.0
+# django-celery-beat==2.8.0  # Versión compatible con Django 5.2
+# django-celery-results==2.5.1
+# django-redis==5.4.0
+
+
+# ==============================================================================
+# FIREBASE (Storage para PDFs)
+# ==============================================================================
+# NOTA: Comentado - agregar después cuando configures Firebase
+# firebase-admin==6.6.0
+
+
+# ==============================================================================
+# TESSERACT OCR & IMAGE PROCESSING
+# ==============================================================================
+# NOTA: Comentado - agregar después cuando necesites OCR
+# pytesseract==0.3.13
+# pdf2image==1.17.0
+Pillow==12.0.0
+
+
+# ==============================================================================
+# SEGURIDAD & AUTENTICACIÓN
+# ==============================================================================
+# NOTA: django-axes y django-cryptography comentados - agregar después
+# django-axes==7.0.0
+# django-cryptography==1.1
+cryptography==44.0.0
+
+
+# ==============================================================================
+# DEPLOYMENT & PRODUCTION
+# ==============================================================================
+gunicorn==23.0.0
+whitenoise==6.8.2
+
+
+# ==============================================================================
+# VARIABLES DE ENTORNO
+# ==============================================================================
+python-decouple==3.8
+
+
+# ==============================================================================
+# UTILIDADES
+# ==============================================================================
+python-dateutil==2.9.0.post0
+six==1.17.0
+
+
+# ==============================================================================
+# ANÁLISIS DE DATOS (para reportes y exportación)
+# ==============================================================================
+# NOTA: Comentado - agregar después cuando necesites exportación
+# pandas==2.3.3
+# numpy==2.3.4
+openpyxl==3.1.5
+et-xmlfile==2.0.0
+
+
+# ==============================================================================
+# NOTAS
+# ==============================================================================
+#
+# TESTING: Para desarrollo local, instalar por separado:
+# pip install pytest pytest-django pytest-cov factory-boy faker
+#
+# LINTING: Para desarrollo local, instalar por separado:
+# pip install black flake8 isort pylint pylint-django
+#
+# DEBUG: Para desarrollo local, instalar por separado:
+# pip install django-debug-toolbar ipython django-extensions
+#
