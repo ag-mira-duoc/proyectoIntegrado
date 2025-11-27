@@ -196,3 +196,47 @@ def home_view(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
     return redirect('login')
+
+
+# ============================================================================
+# CRUD USUARIOS (Solo Administradores)
+# ============================================================================
+
+@login_required
+@administrador_requerido
+def usuarios_lista(request):
+    """Lista todos los usuarios del sistema."""
+    usuarios = User.objects.all().select_related('corredora').prefetch_related('groups').order_by('-date_joined')
+    return render(request, 'usuarios/lista.html', {'usuarios': usuarios})
+
+
+@login_required
+@administrador_requerido
+def usuario_detalle(request, pk):
+    """Detalle de un usuario."""
+    usuario = get_object_or_404(User, pk=pk)
+    return render(request, 'usuarios/detalle.html', {'usuario_detalle': usuario})
+
+
+@login_required
+@administrador_requerido
+def usuario_editar(request, pk):
+    """Edita un usuario y sus roles."""
+    from .forms import EditarUsuarioForm
+    from django.shortcuts import get_object_or_404
+    
+    usuario = get_object_or_404(User, pk=pk)
+    if request.method == 'POST':
+        form = EditarUsuarioForm(request.POST, instance=usuario)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Usuario {usuario.get_full_name()} actualizado.')
+            return redirect('usuarios:detalle', pk=pk)
+    else:
+        form = EditarUsuarioForm(instance=usuario)
+    
+    return render(request, 'usuarios/form.html', {
+        'form': form,
+        'usuario_editando': usuario,
+        'form_title': f'Editar Usuario: {usuario.get_full_name()}'
+    })

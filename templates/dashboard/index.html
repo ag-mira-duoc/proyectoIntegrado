@@ -14,6 +14,41 @@
     </div>
 </div>
 
+<!-- Accesos Rápidos -->
+{% if is_analista or is_administrador %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-3"><i class="bi bi-lightning-fill"></i> Accesos Rápidos</h5>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{% url 'calificaciones:crear' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Nueva Calificación
+                    </a>
+                    <a href="{% url 'clientes:crear' %}" class="btn btn-success">
+                        <i class="bi bi-person-plus"></i> Nuevo Cliente
+                    </a>
+                    <a href="{% url 'calificaciones:listado' %}" class="btn btn-info">
+                        <i class="bi bi-list-ul"></i> Ver Calificaciones
+                    </a>
+                    <a href="{% url 'calificaciones:reporte_agentes' %}" class="btn btn-warning">
+                        <i class="bi bi-graph-up"></i> Reportes
+                    </a>
+                    {% if is_administrador %}
+                    <a href="{% url 'usuarios:listado' %}" class="btn btn-secondary">
+                        <i class="bi bi-people"></i> Gestionar Usuarios
+                    </a>
+                    <a href="{% url 'corredoras:listado' %}" class="btn btn-dark">
+                        <i class="bi bi-building"></i> Gestionar Corredoras
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Estadísticas Generales -->
 <div class="row mb-4">
     <div class="col-xl-3 col-md-6 mb-4">
