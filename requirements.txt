@@ -41,11 +41,11 @@ crispy-bootstrap5==2025.6
 # CELERY & ASYNC TASKS
 # ==============================================================================
 # NOTA: Comentado temporalmente - agregar después con Redis/Upstash
-# celery==5.4.0
-# redis==5.2.0
-# django-celery-beat==2.8.0  # Versión compatible con Django 5.2
-# django-celery-results==2.5.1
-# django-redis==5.4.0
+celery==5.4.0
+redis==5.2.0
+django-celery-beat==2.8.0  # Versión compatible con Django 5.2
+django-celery-results==2.5.1
+django-redis==5.4.0
 
 
 # ==============================================================================
