@@ -100,11 +100,36 @@
                             <!-- Factores 8-17 -->
                             <h6 class="text-primary border-bottom pb-2 mb-3">Factores 8-17</h6>
                             <div class="row">
-                                {% for i in "012345" %}
                                 <div class="col-md-6 col-lg-4">
-                                    {{ form|attr:"factor"|add:i|add:8|as_crispy_field }}
+                                    {{ form.factor8|as_crispy_field }}
                                 </div>
-                                {% endfor %}
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor9|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor10|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor11|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor12|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor13|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor14|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor15|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor16|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 col-lg-4">
+                                    {{ form.factor17|as_crispy_field }}
+                                </div>
                             </div>
                             
                             <!-- Factores 18-27 -->

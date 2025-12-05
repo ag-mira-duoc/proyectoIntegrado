@@ -27,7 +27,7 @@ class Cliente(models.Model):
     - Persona Natural (con extensión en PersonaNatural)
     - Persona Jurídica (con extensión en PersonaJuridica)
 
-    Características:
+    Características: 
     - Soft delete (no se eliminan físicamente)
     - Cifrado de datos sensibles (rut, telefono, correo)
     - Validación de RUT chileno
@@ -307,29 +307,36 @@ class ClienteAccion(models.Model):
 
 
 class Calificacion(models.Model):
-    """
-    Modelo central del sistema: Calificación Tributaria (Modelo 1851 SII).
+    # Opciones
+    MERCADO_CHOICES = [
+        ('AC', 'Acciones'),
+        ('CFI', 'CFI'),
+    ]
+    
+    TIPO_SOCIEDAD_CHOICES = [
+        ('A', 'Abierta (A)'),
+        ('C', 'Cerrada (C)'),
+    ]
 
-    Almacena los 30 factores tributarios requeridos por el SII chileno
-    para la declaración de inversiones en instrumentos financieros.
-
-    Características:
-    - 30 factores (factor8 a factor37) según formulario 1851 SII
-    - Validación de suma de factores
-    - Auditoría automática mediante signals
-    - Índices para consultas por corredora, año, cliente
-    """
+    ESTADOS = [
+        ('BORRADOR', 'Borrador'),
+        ('REVISION', 'En Revisión'),
+        ('APROBADA', 'Aprobada'),
+        ('RECHAZADA', 'Rechazada'),
+        ('ENVIADA_SII', 'Enviada al SII'),
+    ]
 
     # Relaciones
     corredora = models.ForeignKey(
         Corredora,
         on_delete=models.CASCADE,
         related_name='calificaciones',
-        help_text="Corredora responsable de la calificación"
+        help_text="Corredora responsable de la calificación",
+        null=True, blank=True
     )
     cliente = models.ForeignKey(
         Cliente,
-        on_delete=models.PROTECT,  # No permitir eliminar cliente con calificaciones
+        on_delete=models.PROTECT,
         related_name='calificaciones',
         help_text="Cliente al que pertenece la calificación"
     )
@@ -340,123 +347,132 @@ class Calificacion(models.Model):
         help_text="Usuario que creó/modificó la calificación"
     )
 
-    # Datos generales
+    # ==========================================
+    # CAMPOS SEGÚN ARCHIVO DE CARGA (CSV 3.1)
+    # ==========================================
+    
+    # 1. Ejercicio (Numero, 4)
     anno = models.IntegerField(
-        validators=[
-            MinValueValidator(2000),
-            MaxValueValidator(2100)
-        ],
-        help_text="Año comercial de la calificación"
+        verbose_name="Ejercicio",
+        validators=[MinValueValidator(2000), MaxValueValidator(2100)],
+        help_text="Año comercial (ej: 2025)"
     )
+
+    # 2. Mercado (Texto, 3)
     mercado = models.CharField(
         max_length=3,
-        blank=True,
-        null=True,
-        choices=Accion.MERCADOS,
-        help_text="Tipo de mercado (LOC, INT, EME)"
+        choices=MERCADO_CHOICES,
+        blank=True, null=True
     )
+
+    # 3. Instrumento (Texto, 50)
     instrumento = models.CharField(
         max_length=50,
-        blank=True,
-        null=True,
-        help_text="Tipo de instrumento financiero"
+        blank=True, null=True
     )
+
+    # 4. Fecha (Fecha, 10)
     fecha_pago = models.DateField(
-        null=True,
-        blank=True,
-        help_text="Fecha de pago del dividendo"
+        verbose_name="Fecha Pago",
+        help_text="DD-MM-AAAA",
+        null=True, blank=True
     )
-    secuencia_evento = models.IntegerField(
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(1)],
-        help_text="Secuencia del evento de pago"
+
+    # 5. Secuencia (Numero, 10) - BigInteger para evitar desbordamiento
+    secuencia_evento = models.BigIntegerField(
+        verbose_name="Secuencia",
+        null=True, blank=True,
+        validators=[MinValueValidator(1)]
     )
-    dividendo = models.DecimalField(
-        max_digits=15,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(Decimal('0.00'))],
-        help_text="Monto del dividendo"
+
+    # 6. Numero de dividendo (Numero, 10) - NUEVO
+    numero_dividendo = models.BigIntegerField(
+        verbose_name="Número de dividendo",
+        null=True, blank=True
     )
-    descripcion = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True,
-        help_text="Descripción adicional de la calificación"
+
+    # 7. Tipo sociedad (Texto, 1) - NUEVO
+    tipo_sociedad = models.CharField(
+        max_length=1,
+        choices=TIPO_SOCIEDAD_CHOICES,
+        null=True, blank=True
     )
+
+    # 8. Valor Historico (Numero, 10) - Usamos 8 decimales por consistencia
+    valor_historico = models.DecimalField(
+        max_digits=15, 
+        decimal_places=8, 
+        default=0,
+        null=True, blank=True
+    )
+
+    # ==========================================
+    # CAMPOS DE LÓGICA DE NEGOCIO ADICIONALES
+    # ==========================================
+
+    # Factor de Actualización (Factor de Crédito)
+    # Ejemplos: 0,142857 (Pyme), 0,369863 (Semiintegrado)
     factor_actualizacion = models.DecimalField(
         max_digits=10,
-        decimal_places=6,
+        decimal_places=6, # Suficiente para los ejemplos dados
         null=True,
         blank=True,
-        validators=[MinValueValidator(Decimal('0.000001'))],
-        help_text="Factor de actualización tributario"
-    )
-    isfut = models.BooleanField(
-        default=False,
-        help_text="Si aplica impuesto de primera categoría (ISFUT)"
-    )
-    valor_historico = models.DecimalField(
-        max_digits=15,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        help_text="Valor histórico del instrumento"
-    )
-    ingreso_montos = models.BooleanField(
-        default=False,
-        help_text="Si se han ingresado los montos de factores"
+        validators=[MinValueValidator(Decimal('0.000000'))],
+        help_text="Factor de crédito (Ej: 0.142857 para Pyme)"
     )
 
-    # Factores tributarios (30 factores: factor8 a factor37)
-    # Según formulario 1851 del SII chileno
-    factor8 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 8: Dividendos percibidos")
-    factor9 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 9: Devolución de capital")
-    factor10 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 10: Enajenación de acciones")
-    factor11 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 11: Rescate acciones")
-    factor12 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 12: Crédito Ley 18.985")
-    factor13 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 13: Utilidades retenidas")
-    factor14 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 14: Gastos rechazados")
-    factor15 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 15: Costo acciones")
-    factor16 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 16: Valor de adquisición")
-    factor17 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 17: Valor de enajenación")
-    factor18 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 18: Mayor valor")
-    factor19 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 19: Pérdida")
-    factor20 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 20: Remanente")
-    factor21 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 21: Crédito extranjero")
-    factor22 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 22: Impuesto pagado exterior")
-    factor23 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 23: Incremento por crédito")
-    factor24 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 24: Base imponible")
-    factor25 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 25: Impuesto determinado")
-    factor26 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 26: Crédito por IDPC")
-    factor27 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 27: Retenciones")
-    factor28 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 28: PPM")
-    factor29 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 29: Otros créditos")
-    factor30 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 30: Imputación de remanente")
-    factor31 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 31: Remanente de crédito")
-    factor32 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 32: Impuesto a pagar")
-    factor33 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 33: Devolución")
-    factor34 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 34: Saldo a favor")
-    factor35 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 35: Tasa de impuesto")
-    factor36 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 36: Ajuste por tipo de cambio")
-    factor37 = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Factor 37: Otros ajustes")
-
-    # Estado de la calificación
-    ESTADOS = [
-        ('BORRADOR', 'Borrador'),
-        ('REVISION', 'En Revisión'),
-        ('APROBADA', 'Aprobada'),
-        ('RECHAZADA', 'Rechazada'),
-        ('ENVIADA_SII', 'Enviada al SII'),
-    ]
+    dividendo = models.DecimalField(
+        max_digits=15, decimal_places=2,
+        null=True, blank=True,
+        validators=[MinValueValidator(Decimal('0.00'))],
+        help_text="Monto monetario del dividendo"
+    )
+    
+    descripcion = models.CharField(max_length=255, null=True, blank=True)
+    isfut = models.BooleanField(default=False, verbose_name="Aplica ISFUT")
+    ingreso_montos = models.BooleanField(default=False)
+    
     estado = models.CharField(
         max_length=20,
         choices=ESTADOS,
-        default='BORRADOR',
-        help_text="Estado actual de la calificación"
+        default='BORRADOR'
     )
+
+    # ==========================================
+    # FACTORES TRIBUTARIOS (Factor 8 a 37)
+    # Requerimiento 3.1: "1 entero, 8 decimales"
+    # Max Digits: 10 (para permitir 1.00000000)
+    # ==========================================
+    factor8 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor9 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor10 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor11 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor12 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor13 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor14 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor15 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor16 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor17 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor18 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor19 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor20 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor21 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor22 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor23 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor24 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor25 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor26 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor27 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor28 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor29 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor30 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor31 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor32 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor33 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor34 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor35 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor36 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    factor37 = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -465,76 +481,17 @@ class Calificacion(models.Model):
     class Meta:
         db_table = 'calificacion'
         ordering = ['-anno', '-created_at']
-        verbose_name = 'Calificación'
-        verbose_name_plural = 'Calificaciones'
         indexes = [
-            # Índice compuesto para búsquedas frecuentes
-            models.Index(fields=['corredora', 'anno'], name='idx_calif_corr_anno'),
-            models.Index(fields=['cliente', 'anno'], name='idx_calif_cliente_anno'),
-            models.Index(fields=['user', 'created_at'], name='idx_calif_user_created'),
-            models.Index(fields=['estado'], name='idx_calif_estado'),
-            models.Index(fields=['created_at'], name='idx_calif_created'),
-            # Índice para reportes por período
-            models.Index(fields=['anno', 'estado'], name='idx_calif_anno_estado'),
-        ]
-        constraints = [
-            # Unicidad: una calificación por cliente/año/secuencia
-            models.UniqueConstraint(
-                fields=['cliente', 'anno', 'secuencia_evento'],
-                name='unique_calif_cliente_anno_seq',
-                condition=Q(secuencia_evento__isnull=False)
-            ),
-            # Validación: año debe ser mayor a 2000
-            models.CheckConstraint(
-                check=Q(anno__gte=2000),
-                name='chk_calif_anno_minimo'
-            ),
+            models.Index(fields=['corredora', 'anno']),
+            models.Index(fields=['cliente', 'anno']),
+            models.Index(fields=['estado']),
         ]
 
     def __str__(self):
-        return f"Calificación {self.id} - {self.cliente.rut} - {self.anno} - {self.get_estado_display()}"
-
-    def clean(self):
-        """
-        Validaciones personalizadas a nivel de modelo.
-
-        Raises:
-            ValidationError: Si hay errores de validación
-        """
-        super().clean()
-
-        # Validar que el cliente pertenezca a la misma corredora (opcional, según arquitectura)
-        # Esta validación asume que Cliente debe estar asociado a una Corredora
-        # Si no hay relación directa, comentar esta validación
-
-        # Validar rangos de factores (todos deben ser positivos o cero si están presentes)
-        factores = [
-            self.factor8, self.factor9, self.factor10, self.factor11, self.factor12,
-            self.factor13, self.factor14, self.factor15, self.factor16, self.factor17,
-            self.factor18, self.factor19, self.factor20, self.factor21, self.factor22,
-            self.factor23, self.factor24, self.factor25, self.factor26, self.factor27,
-            self.factor28, self.factor29, self.factor30, self.factor31, self.factor32,
-            self.factor33, self.factor34, self.factor35, self.factor36, self.factor37,
-        ]
-
-        for i, factor in enumerate(factores, start=8):
-            if factor is not None and factor < 0:
-                raise ValidationError(f'El factor{i} no puede ser negativo')
-
-    def save(self, *args, **kwargs):
-        """
-        Override del save para ejecutar validaciones.
-        """
-        self.full_clean()
-        super().save(*args, **kwargs)
-
+        return f"{self.instrumento} ({self.anno})"
+        
     def get_suma_factores(self) -> Decimal:
-        """
-        Calcula la suma de todos los factores tributarios.
-
-        Returns:
-            Decimal con la suma total de factores (ignora None)
-        """
+        """Suma de todos los factores 8-37 para validaciones."""
         factores = [
             self.factor8, self.factor9, self.factor10, self.factor11, self.factor12,
             self.factor13, self.factor14, self.factor15, self.factor16, self.factor17,
@@ -544,25 +501,3 @@ class Calificacion(models.Model):
             self.factor33, self.factor34, self.factor35, self.factor36, self.factor37,
         ]
         return sum(f for f in factores if f is not None)
-
-    def aprobar(self, user):
-        """
-        Aprueba la calificación y registra el usuario que aprobó.
-
-        Args:
-            user: Usuario que aprueba
-        """
-        self.estado = 'APROBADA'
-        self.user = user
-        self.save()
-
-    def rechazar(self, user):
-        """
-        Rechaza la calificación y registra el usuario que rechazó.
-
-        Args:
-            user: Usuario que rechaza
-        """
-        self.estado = 'RECHAZADA'
-        self.user = user
-        self.save()

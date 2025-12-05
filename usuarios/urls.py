@@ -7,6 +7,8 @@ from . import views
 app_name = 'usuarios'
 
 urlpatterns = [
-    # Listado de usuarios (para administradores)
-    # path('', views.usuarios_lista, name='listado'),  # Por implementar
+    # CRUD Usuarios (admin)
+    path('', views.usuarios_lista, name='listado'),
+    path('<int:pk>/', views.usuario_detalle, name='detalle'),
+    path('<int:pk>/editar/', views.usuario_editar, name='editar'),
 ]

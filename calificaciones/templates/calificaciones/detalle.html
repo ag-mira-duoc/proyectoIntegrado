@@ -22,7 +22,6 @@
 </div>
 
 <div class="row">
-    <!-- Información General -->
     <div class="col-md-6 mb-4">
         <div class="card shadow h-100">
             <div class="card-header bg-primary text-white">
@@ -74,18 +73,12 @@
                             <td>{{ calificacion.secuencia_evento|default:"-" }}</td>
                         </tr>
                         <tr>
-                            <th>Dividendo:</th>
-                            <td>{{ calificacion.dividendo|default:"-" }}</td>
+                            <th>N° Dividendo:</th>
+                            <td>{{ calificacion.numero_dividendo|default:"-" }}</td>
                         </tr>
                         <tr>
-                            <th>ISFUT:</th>
-                            <td>
-                                {% if calificacion.isfut %}
-                                    <i class="bi bi-check-circle-fill text-success"></i> Sí
-                                {% else %}
-                                    <i class="bi bi-x-circle-fill text-danger"></i> No
-                                {% endif %}
-                            </td>
+                            <th>Dividendo ($):</th>
+                            <td>{{ calificacion.dividendo|default:"-" }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -93,7 +86,6 @@
         </div>
     </div>
 
-    <!-- Metadatos -->
     <div class="col-md-6 mb-4">
         <div class="card shadow h-100">
             <div class="card-header bg-secondary text-white">
@@ -111,7 +103,7 @@
                             <td>{{ calificacion.user.get_full_name }}</td>
                         </tr>
                         <tr>
-                            <th>Email Usuario:</th>
+                            <th>Email:</th>
                             <td>{{ calificacion.user.email }}</td>
                         </tr>
                         <tr>
@@ -121,6 +113,10 @@
                         <tr>
                             <th>Actualizado:</th>
                             <td>{{ calificacion.updated_at|date:"d/m/Y H:i" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Tipo Sociedad:</th>
+                            <td>{{ calificacion.get_tipo_sociedad_display|default:"-" }}</td>
                         </tr>
                         <tr>
                             <th>Descripción:</th>
@@ -133,12 +129,11 @@
     </div>
 </div>
 
-<!-- Factores Tributarios -->
 <div class="row">
     <div class="col-12">
         <div class="card shadow">
             <div class="card-header bg-success text-white">
-                <h5 class="mb-0"><i class="bi bi-calculator"></i> Factores Tributarios (Formulario 1851 SII)</h5>
+                <h5 class="mb-0"><i class="bi bi-calculator"></i> Factores Tributarios</h5>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -151,25 +146,23 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for i in "89" %}
+                            {% for factor in lista_factores %}
                                 <tr>
-                                    <td><strong>Factor {{ i }}</strong></td>
-                                    <td>{{ calificacion|attr:"factor"|add:i|attr:"help_text" }}</td>
+                                    <td><strong>Factor {{ factor.numero }}</strong></td>
+                                    <td>{{ factor.descripcion|default:"" }}</td>
                                     <td class="text-end">
-                                        {% with factor=calificacion|attr:"factor"|add:i %}
-                                            {% if factor %}
-                                                ${{ factor|floatformat:2 }}
-                                            {% else %}
-                                                <span class="text-muted">-</span>
-                                            {% endif %}
-                                        {% endwith %}
+                                        {% if factor.valor is not None %}
+                                            {{ factor.valor|floatformat:8 }}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
                                     </td>
                                 </tr>
                             {% endfor %}
-                            <!-- Resto de factores 10-37 se mostrarían igual -->
+                            
                             <tr class="table-primary fw-bold">
-                                <td colspan="2">TOTAL</td>
-                                <td class="text-end">${{ calificacion.get_suma_factores|floatformat:2 }}</td>
+                                <td colspan="2">TOTAL FACTORES</td>
+                                <td class="text-end">{{ calificacion.get_suma_factores|floatformat:8 }}</td>
                             </tr>
                         </tbody>
                     </table>

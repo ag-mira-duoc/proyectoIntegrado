@@ -1,37 +1,76 @@
 {% extends 'base.html' %}
 {% load crispy_forms_tags %}
-{% block title %}Cliente - NUAM{% endblock %}
+
+{% block title %}Registrar Cliente - NUAM{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">{% if cliente %}Editar Cliente{% else %}Nuevo Cliente{% endif %}</h1>
-    <a href="{% url 'clientes:listado' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Volver</a>
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-dark text-white">
+            <h4 class="mb-0"><i class="bi bi-person-plus"></i> Registrar Nuevo Cliente</h4>
+        </div>
+        <div class="card-body">
+            
+            <ul class="nav nav-tabs mb-4" id="clienteTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link {% if tipo_seleccionado == 'natural' %}active{% endif %}" 
+                            id="natural-tab" data-bs-toggle="tab" data-bs-target="#natural" 
+                            type="button" role="tab" onclick="setTipo('natural')">
+                        <i class="bi bi-person"></i> Persona Natural
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link {% if tipo_seleccionado == 'juridica' %}active{% endif %}" 
+                            id="juridica-tab" data-bs-toggle="tab" data-bs-target="#juridica" 
+                            type="button" role="tab" onclick="setTipo('juridica')">
+                        <i class="bi bi-building"></i> Persona Jurídica
+                    </button>
+                </li>
+            </ul>
+
+            <form method="post" id="formCliente" novalidate>
+                {% csrf_token %}
+                
+                <input type="hidden" name="tipo" id="inputTipo" value="{{ tipo_seleccionado|default:'natural' }}">
+
+                <div class="row">
+                    <div class="col-md-5 border-end">
+                        <h5 class="text-muted mb-3">Datos de Contacto</h5>
+                        {{ cliente_form|crispy }}
+                    </div>
+
+                    <div class="col-md-7">
+                        <div class="tab-content" id="clienteTabsContent">
+                            
+                            <div class="tab-pane fade {% if tipo_seleccionado == 'natural' %}show active{% endif %}" id="natural" role="tabpanel">
+                                <h5 class="text-primary mb-3">Datos Persona Natural</h5>
+                                {{ persona_natural_form|crispy }}
+                            </div>
+
+                            <div class="tab-pane fade {% if tipo_seleccionado == 'juridica' %}show active{% endif %}" id="juridica" role="tabpanel">
+                                <h5 class="text-primary mb-3">Datos Empresa / Sociedad</h5>
+                                {{ persona_juridica_form|crispy }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+                
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{% url 'clientes:listado' %}" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-save"></i> Guardar Cliente
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
-<form method="post">
-    {% csrf_token %}
-    {% if not cliente %}
-    <div class="mb-3">
-        <label>Tipo de Cliente:</label>
-        <select name="tipo" class="form-select" id="tipoCliente">
-            <option value="natural">Persona Natural</option>
-            <option value="juridica">Persona Jurídica</option>
-        </select>
-    </div>
-    {% endif %}
-    {{ cliente_form|crispy }}
-    <div id="personaNatural" {% if not es_natural and cliente %}style="display:none"{% endif %}>
-        {% if persona_natural_form %}{{ persona_natural_form|crispy }}{% elif persona_form and es_natural %}{{ persona_form|crispy }}{% endif %}
-    </div>
-    <div id="personaJuridica" {% if es_natural or not cliente %}style="display:none"{% endif %}>
-        {% if persona_juridica_form %}{{ persona_juridica_form|crispy }}{% elif persona_form and not es_natural %}{{ persona_form|crispy }}{% endif %}
-    </div>
-    <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Guardar</button>
-</form>
-{% endblock %}
-{% block extra_js %}
+
 <script>
-$('#tipoCliente').change(function(){
-    if($(this).val()=='natural'){$('#personaNatural').show();$('#personaJuridica').hide();}
-    else{$('#personaJuridica').show();$('#personaNatural').hide();}
-});
+    function setTipo(tipo) {
+        document.getElementById('inputTipo').value = tipo;
+    }
 </script>
 {% endblock %}

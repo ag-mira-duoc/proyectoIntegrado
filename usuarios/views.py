@@ -1,8 +1,9 @@
 """
 Vistas para la app usuarios (autenticación, perfil, dashboard)
 """
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate, update_session_auth_hash
+from django.contrib.auth.models import Group
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Count, Q
@@ -12,6 +13,7 @@ from datetime import datetime
 from .forms import LoginForm, RegistroForm, PerfilForm, CambiarPasswordForm
 from .decorators import administrador_requerido
 from calificaciones.models import Calificacion, Cliente
+from .models import User
 
 
 def login_view(request):
@@ -43,12 +45,6 @@ def login_view(request):
 
 
 def registro_view(request):
-    """
-    Vista de registro de nuevos usuarios.
-    
-    GET: Muestra formulario de registro
-    POST: Crea nuevo usuario y lo autentica
-    """
     if request.user.is_authenticated:
         return redirect('dashboard')
     
@@ -56,14 +52,18 @@ def registro_view(request):
         form = RegistroForm(request.POST)
         if form.is_valid():
             user = form.save()
+            # --- ASIGNACIÓN DE ROL ANALISTA ---
+            try:
+                grupo_analista = Group.objects.get(name='Analista') # Asegúrate que el grupo exista en BD
+                user.groups.add(grupo_analista)
+            except Group.DoesNotExist:
+                pass # Manejar error o crear grupo si no existe
+            # ----------------------------------
             login(request, user)
-            messages.success(request, f'Cuenta creada exitosamente. Bienvenido, {user.get_full_name()}!')
+            messages.success(request, f'Cuenta creada. Bienvenido {user.get_full_name()}')
             return redirect('dashboard')
-        else:
-            messages.error(request, 'Por favor corrige los errores en el formulario.')
     else:
         form = RegistroForm()
-    
     return render(request, 'usuarios/registro.html', {'form': form})
 
 
@@ -196,3 +196,47 @@ def home_view(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
     return redirect('login')
+
+
+# ============================================================================
+# CRUD USUARIOS (Solo Administradores)
+# ============================================================================
+
+@login_required
+@administrador_requerido
+def usuarios_lista(request):
+    """Lista todos los usuarios del sistema."""
+    usuarios = User.objects.all().select_related('corredora').prefetch_related('groups').order_by('-date_joined')
+    return render(request, 'usuarios/lista.html', {'usuarios': usuarios})
+
+
+@login_required
+@administrador_requerido
+def usuario_detalle(request, pk):
+    """Detalle de un usuario."""
+    usuario = get_object_or_404(User, pk=pk)
+    return render(request, 'usuarios/detalle.html', {'usuario_detalle': usuario})
+
+
+@login_required
+@administrador_requerido
+def usuario_editar(request, pk):
+    """Edita un usuario y sus roles."""
+    from .forms import EditarUsuarioForm
+    from django.shortcuts import get_object_or_404
+    
+    usuario = get_object_or_404(User, pk=pk)
+    if request.method == 'POST':
+        form = EditarUsuarioForm(request.POST, instance=usuario)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Usuario {usuario.get_full_name()} actualizado.')
+            return redirect('usuarios:detalle', pk=pk)
+    else:
+        form = EditarUsuarioForm(instance=usuario)
+    
+    return render(request, 'usuarios/form.html', {
+        'form': form,
+        'usuario_editando': usuario,
+        'form_title': f'Editar Usuario: {usuario.get_full_name()}'
+    })

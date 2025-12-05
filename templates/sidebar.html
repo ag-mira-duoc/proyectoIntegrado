@@ -11,6 +11,7 @@
         {% endif %}
         {% if is_administrador %}
         <h6 class="sidebar-heading px-3 mt-4 mb-1 text-muted"><span>ADMINISTRACIÓN</span></h6>
+        <li class="nav-item"><a class="nav-link" href="{% url 'usuarios:listado' %}"><i class="bi bi-person-gear"></i> Usuarios</a></li>
         <li class="nav-item"><a class="nav-link" href="{% url 'corredoras:listado' %}"><i class="bi bi-building"></i> Corredoras</a></li>
         <li class="nav-item"><a class="nav-link" href="{% url 'admin:index' %}"><i class="bi bi-gear"></i> Admin Django</a></li>
         {% endif %}

@@ -1,191 +1,316 @@
 {% extends 'base.html' %}
+{% load crispy_forms_tags %}
 
-{% block title %}Calificaciones - NUAM{% endblock %}
+{% block title %}Gestión de Calificaciones - NUAM{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2"><i class="bi bi-file-earmark-text"></i> Calificaciones Tributarias</h1>
+    <h1 class="h2 text-primary">Gestión de Calificaciones Tributarias</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
-        {% if is_analista or is_administrador %}
-        <a href="{% url 'calificaciones:crear' %}" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Nueva Calificación
-        </a>
-        {% endif %}
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalIngresoCalificacion">
+            <i class="bi bi-plus-circle"></i> INGRESAR CALIFICACIÓN
+        </button>
     </div>
 </div>
 
-<!-- Filtros -->
-<div class="card mb-4">
+<div class="card shadow mb-4">
     <div class="card-body">
-        <form method="get" class="row g-3">
+        <form method="get" class="row g-3 align-items-end">
             <div class="col-md-3">
-                <label class="form-label">Año</label>
-                <select name="anno" class="form-select">
+                <label class="form-label">Mercado</label>
+                <select name="mercado" class="form-select">
                     <option value="">Todos</option>
-                    {% for year in years %}
-                    <option value="{{ year }}" {% if year|stringformat:"s" == request.GET.anno %}selected{% endif %}>
-                        {{ year }}
-                    </option>
+                    <option value="AC">Acciones</option>
+                    <option value="CFI">CFI</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Origen</label>
+                <select name="origen" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="CORREDOR">Corredor</option>
+                    <option value="BOLSA">Bolsa</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Periodo Comercial</label>
+                <select name="anno" class="form-select">
+                    {% for y in years %}
+                    <option value="{{ y }}" {% if request.GET.anno == y|stringformat:"i" %}selected{% endif %}>{{ y }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="col-md-3">
-                <label class="form-label">Estado</label>
-                <select name="estado" class="form-select">
-                    <option value="">Todos</option>
-                    <option value="BORRADOR" {% if request.GET.estado == 'BORRADOR' %}selected{% endif %}>Borrador</option>
-                    <option value="REVISION" {% if request.GET.estado == 'REVISION' %}selected{% endif %}>En Revisión</option>
-                    <option value="APROBADA" {% if request.GET.estado == 'APROBADA' %}selected{% endif %}>Aprobada</option>
-                    <option value="RECHAZADA" {% if request.GET.estado == 'RECHAZADA' %}selected{% endif %}>Rechazada</option>
-                    <option value="ENVIADA_SII" {% if request.GET.estado == 'ENVIADA_SII' %}selected{% endif %}>Enviada al SII</option>
-                </select>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Buscar Cliente</label>
-                <input type="text" name="search" class="form-control" placeholder="RUT o nombre..." value="{{ request.GET.search }}">
-            </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button type="submit" class="btn btn-secondary me-2">
-                    <i class="bi bi-search"></i> Filtrar
-                </button>
-                <a href="{% url 'calificaciones:listado' %}" class="btn btn-outline-secondary">
-                    <i class="bi bi-x-circle"></i>
-                </a>
+                <button type="submit" class="btn btn-secondary w-100"><i class="bi bi-search"></i> BUSCAR</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Tabla de Calificaciones -->
-<div class="card">
-    <div class="card-body">
+<div class="card shadow">
+    <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover" id="calificacionesTable">
-                <thead>
+            <table class="table table-hover table-striped mb-0">
+                <thead class="bg-light">
                     <tr>
-                        <th>ID</th>
-                        <th>Cliente</th>
-                        <th>RUT</th>
-                        <th>Año</th>
-                        <th>Estado</th>
+                        <th>Ejercicio</th>
                         <th>Mercado</th>
-                        <th>Usuario</th>
-                        <th>Fecha Creación</th>
+                        <th>Instrumento</th>
+                        <th>Fecha Pago</th>
+                        <th>Secuencia</th>
+                        <th>N° Div</th>
+                        <th>Origen</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for calificacion in calificaciones %}
+                    {% for c in calificaciones %}
                     <tr>
-                        <td>#{{ calificacion.id }}</td>
-                        <td>{{ calificacion.cliente.get_nombre_completo }}</td>
-                        <td>{{ calificacion.cliente.rut }}</td>
-                        <td>{{ calificacion.anno }}</td>
-                        <td>
-                            {% if calificacion.estado == 'APROBADA' %}
-                                <span class="badge bg-success">{{ calificacion.get_estado_display }}</span>
-                            {% elif calificacion.estado == 'REVISION' %}
-                                <span class="badge bg-warning text-dark">{{ calificacion.get_estado_display }}</span>
-                            {% elif calificacion.estado == 'RECHAZADA' %}
-                                <span class="badge bg-danger">{{ calificacion.get_estado_display }}</span>
-                            {% elif calificacion.estado == 'ENVIADA_SII' %}
-                                <span class="badge bg-info">{{ calificacion.get_estado_display }}</span>
-                            {% else %}
-                                <span class="badge bg-secondary">{{ calificacion.get_estado_display }}</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if calificacion.mercado %}
-                                <span class="badge bg-light text-dark">{{ calificacion.get_mercado_display }}</span>
-                            {% else %}
-                                <span class="text-muted">-</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ calificacion.user.get_short_name }}</td>
-                        <td>{{ calificacion.created_at|date:"d/m/Y H:i" }}</td>
+                        <td>{{ c.anno }}</td>
+                        <td>{{ c.mercado }}</td>
+                        <td>{{ c.instrumento }}</td>
+                        <td>{{ c.fecha_pago|date:"d-m-Y" }}</td>
+                        <td>{{ c.secuencia_evento }}</td>
+                        <td>{{ c.numero_dividendo }}</td>
+                        <td><span class="badge bg-info text-dark">CORREDOR</span></td>
                         <td>
                             <div class="btn-group btn-group-sm">
-                                <a href="{% url 'calificaciones:detalle' calificacion.pk %}" class="btn btn-info" title="Ver Detalle">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                {% if is_analista or is_administrador %}
-                                    {% if calificacion.estado == 'BORRADOR' or calificacion.estado == 'REVISION' %}
-                                    <a href="{% url 'calificaciones:editar' calificacion.pk %}" class="btn btn-warning" title="Editar">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    {% endif %}
-                                {% endif %}
-                                {% if is_administrador %}
-                                <a href="{% url 'calificaciones:eliminar' calificacion.pk %}" class="btn btn-danger" title="Eliminar" onclick="return confirm('¿Está seguro de eliminar esta calificación?')">
-                                    <i class="bi bi-trash"></i>
-                                </a>
-                                {% endif %}
+                                <a href="{% url 'calificaciones:detalle' c.pk %}" class="btn btn-outline-primary" title="Ver Detalle"><i class="bi bi-eye"></i></a>
+                                <a href="{% url 'calificaciones:editar' c.pk %}" class="btn btn-outline-secondary" title="Modificar"><i class="bi bi-pencil"></i></a>
+                                <a href="{% url 'calificaciones:eliminar' c.pk %}" class="btn btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i></a>
                             </div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="9" class="text-center text-muted py-4">
-                            <i class="bi bi-inbox" style="font-size: 3rem;"></i>
-                            <p class="mt-2">No se encontraron calificaciones</p>
-                        </td>
+                        <td colspan="8" class="text-center py-4">No se encontraron calificaciones.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-
-        <!-- Paginación -->
-        {% if is_paginated %}
-        <nav aria-label="Paginación">
-            <ul class="pagination justify-content-center">
+    </div>
+    
+    {% if is_paginated %}
+    <div class="card-footer bg-white">
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center mb-0">
                 {% if page_obj.has_previous %}
-                <li class="page-item">
-                    <a class="page-link" href="?page=1{% if request.GET.anno %}&anno={{ request.GET.anno }}{% endif %}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
-                        Primera
-                    </a>
-                </li>
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.anno %}&anno={{ request.GET.anno }}{% endif %}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
-                        Anterior
-                    </a>
-                </li>
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
                 {% endif %}
-
-                <li class="page-item active">
-                    <span class="page-link">
-                        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
-                    </span>
-                </li>
-
+                <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
                 {% if page_obj.has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.anno %}&anno={{ request.GET.anno }}{% endif %}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
-                        Siguiente
-                    </a>
-                </li>
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.anno %}&anno={{ request.GET.anno }}{% endif %}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
-                        Última
-                    </a>
-                </li>
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
                 {% endif %}
             </ul>
         </nav>
-        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="modalIngresoCalificacion" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered"> 
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalLabel">Ingresar Calificación Tributaria</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <form method="post" action="{% url 'calificaciones:crear' %}" id="formIngreso">
+                {% csrf_token %}
+                
+                <input type="hidden" name="estado" value="BORRADOR">
+                <input type="hidden" name="ingreso_montos" value="False">
+
+                <div class="modal-body">
+                    
+                    <div id="step1-datos-basicos">
+                        <h6 class="text-muted border-bottom pb-2 mb-3">Paso 1: Datos Generales del Instrumento</h6>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Cliente *</label>
+                                <select name="cliente" class="form-select" required>
+                                    <option value="">Seleccione...</option>
+                                    {% for cliente in clientes_list %}
+                                    <option value="{{ cliente.id }}">{{ cliente }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Ejercicio *</label>
+                                <input type="number" name="anno" class="form-control" value="2025" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Mercado *</label>
+                                <select name="mercado" class="form-select">
+                                    <option value="AC">Acciones</option>
+                                    <option value="CFI">CFI</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Instrumento *</label>
+                                <input type="text" name="instrumento" class="form-control" maxlength="50" required>
+                            </div>
+                            
+                            <div class="col-md-3">
+                                <label class="form-label">Fecha Pago *</label>
+                                <input type="date" name="fecha_pago" class="form-control" required>
+                            </div>
+                            
+                            <div class="col-md-3">
+                                <label class="form-label">Secuencia</label>
+                                <input type="number" name="secuencia_evento" class="form-control">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">N° Dividendo</label>
+                                <input type="number" name="numero_dividendo" class="form-control">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Tipo Sociedad</label>
+                                <select name="tipo_sociedad" class="form-select">
+                                    <option value="">Seleccione...</option>
+                                    <option value="A">Abierta (A)</option>
+                                    <option value="C">Cerrada (C)</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Monto Dividendo</label>
+                                <input type="number" step="0.01" name="dividendo" class="form-control" value="0.00">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Factor Crédito</label>
+                                <input type="number" step="0.000001" name="factor_actualizacion" class="form-control" placeholder="Ej: 0.142857">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Valor Histórico</label>
+                                <input type="number" step="0.00000001" name="valor_historico" class="form-control" value="0.00000000">
+                            </div>
+                            <div class="col-md-3 d-flex align-items-center">
+                                <div class="form-check form-switch mt-4">
+                                    <input class="form-check-input" type="checkbox" name="isfut" id="id_isfut">
+                                    <label class="form-check-label" for="id_isfut">Aplica ISFUT</label>
+                                </div>
+                            </div>
+                            
+                            <div class="col-12">
+                                <label class="form-label">Descripción</label>
+                                <input type="text" name="descripcion" class="form-control" maxlength="255">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="step2-factores" style="display: none;">
+                        <h6 class="text-muted border-bottom pb-2 mb-3">Paso 2: Ingreso de Factores Tributarios</h6>
+                        <div class="alert alert-info py-1"><small>Ingrese los factores correspondientes (1 entero, 8 decimales).</small></div>
+                        
+                        <div style="max-height: 400px; overflow-y: auto; overflow-x: hidden; padding-right: 10px; border: 1px solid #dee2e6; padding: 15px; border-radius: 5px;">
+                            <div class="row g-2">
+                                <div class="col-md-4"><label class="small fw-bold">Factor 08</label><input type="number" step="0.00000001" name="factor8" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small fw-bold">Factor 09</label><input type="number" step="0.00000001" name="factor9" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small fw-bold">Factor 10</label><input type="number" step="0.00000001" name="factor10" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small fw-bold">Factor 11</label><input type="number" step="0.00000001" name="factor11" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small fw-bold">Factor 12</label><input type="number" step="0.00000001" name="factor12" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small fw-bold">Factor 13</label><input type="number" step="0.00000001" name="factor13" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small fw-bold">Factor 14</label><input type="number" step="0.00000001" name="factor14" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small fw-bold">Factor 15</label><input type="number" step="0.00000001" name="factor15" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small fw-bold">Factor 16</label><input type="number" step="0.00000001" name="factor16" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small fw-bold">Factor 17</label><input type="number" step="0.00000001" name="factor17" class="form-control form-control-sm"></div>
+                                
+                                <div class="col-12"><hr class="my-1"></div>
+                                
+                                <div class="col-md-4"><label class="small">Factor 18</label><input type="number" step="0.00000001" name="factor18" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small">Factor 19</label><input type="number" step="0.00000001" name="factor19" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small">Factor 20</label><input type="number" step="0.00000001" name="factor20" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small">Factor 21</label><input type="number" step="0.00000001" name="factor21" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small">Factor 22</label><input type="number" step="0.00000001" name="factor22" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small">Factor 23</label><input type="number" step="0.00000001" name="factor23" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small">Factor 24</label><input type="number" step="0.00000001" name="factor24" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small">Factor 25</label><input type="number" step="0.00000001" name="factor25" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small">Factor 26</label><input type="number" step="0.00000001" name="factor26" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small">Factor 27</label><input type="number" step="0.00000001" name="factor27" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small">Factor 28</label><input type="number" step="0.00000001" name="factor28" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small">Factor 29</label><input type="number" step="0.00000001" name="factor29" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small">Factor 30</label><input type="number" step="0.00000001" name="factor30" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small">Factor 31</label><input type="number" step="0.00000001" name="factor31" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small">Factor 32</label><input type="number" step="0.00000001" name="factor32" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small">Factor 33</label><input type="number" step="0.00000001" name="factor33" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small">Factor 34</label><input type="number" step="0.00000001" name="factor34" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small">Factor 35</label><input type="number" step="0.00000001" name="factor35" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small">Factor 36</label><input type="number" step="0.00000001" name="factor36" class="form-control form-control-sm"></div>
+                                <div class="col-md-4"><label class="small">Factor 37</label><input type="number" step="0.00000001" name="factor37" class="form-control form-control-sm"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    
+                    <button type="button" class="btn btn-primary" id="btnSiguiente" onclick="irAPaso2()">
+                        Siguiente <i class="bi bi-arrow-right"></i>
+                    </button>
+                    
+                    <button type="button" class="btn btn-outline-secondary" id="btnAtras" onclick="irAPaso1()" style="display: none;">
+                        <i class="bi bi-arrow-left"></i> Volver
+                    </button>
+                    
+                    <button type="submit" class="btn btn-success" id="btnGuardar" style="display: none;">
+                        <i class="bi bi-save"></i> GRABAR
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-$(document).ready(function() {
-    // DataTables initialization (optional - si quieres ordenar la tabla)
-    // $('#calificacionesTable').DataTable({
-    //     "language": {
-    //         "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
-    //     }
-    // });
-});
+    document.addEventListener("DOMContentLoaded", function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('action') === 'ingresar') {
+            var myModalEl = document.getElementById('modalIngresoCalificacion');
+            if (myModalEl) {
+                var modal = new bootstrap.Modal(myModalEl);
+                modal.show();
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            }
+        }
+    });
+
+    function irAPaso2() {
+        const inputsPaso1 = document.querySelectorAll('#step1-datos-basicos input[required], #step1-datos-basicos select[required]');
+        let valido = true;
+        inputsPaso1.forEach(input => {
+            if (!input.value) {
+                input.classList.add('is-invalid');
+                valido = false;
+            } else {
+                input.classList.remove('is-invalid');
+            }
+        });
+
+        if (!valido) {
+            alert("Por favor complete los campos obligatorios del paso 1.");
+            return;
+        }
+
+        document.getElementById('step1-datos-basicos').style.display = 'none';
+        document.getElementById('step2-factores').style.display = 'block';
+        document.getElementById('btnSiguiente').style.display = 'none';
+        document.getElementById('btnAtras').style.display = 'inline-block';
+        document.getElementById('btnGuardar').style.display = 'inline-block';
+    }
+
+    function irAPaso1() {
+        document.getElementById('step1-datos-basicos').style.display = 'block';
+        document.getElementById('step2-factores').style.display = 'none';
+        document.getElementById('btnSiguiente').style.display = 'inline-block';
+        document.getElementById('btnAtras').style.display = 'none';
+        document.getElementById('btnGuardar').style.display = 'none';
+    }
 </script>
 {% endblock %}

@@ -123,6 +123,20 @@ class RegistroForm(UserCreationForm):
             raise ValidationError('Este RUT ya está registrado.')
         return rut
 
+    def save(self, commit=True):
+        """Guarda el usuario y le asigna el rol 'Analistas' por defecto."""
+        from django.contrib.auth.models import Group
+        user = super().save(commit=False)
+        if commit:
+            user.save()
+            # Asignar rol "Analistas" por defecto
+            try:
+                analistas_group = Group.objects.get(name='Analistas')
+                user.groups.add(analistas_group)
+            except Group.DoesNotExist:
+                pass  # Si no existe el grupo, no hacer nada
+        return user
+
 
 class PerfilForm(forms.ModelForm):
     """
@@ -183,3 +197,40 @@ class CambiarPasswordForm(PasswordChangeForm):
             'placeholder': 'Confirmar nueva contraseña'
         })
     )
+
+
+class EditarUsuarioForm(forms.ModelForm):
+    """Formulario para que admin edite usuarios y sus roles."""
+    grupos = forms.ModelMultipleChoiceField(
+        queryset=None,
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label='Roles'
+    )
+
+    class Meta:
+        model = User
+        fields = ('nombre', 'apellido', 'email', 'corredora', 'is_active', 'is_staff')
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'apellido': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'corredora': forms.Select(attrs={'class': 'form-select'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_staff': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        from django.contrib.auth.models import Group
+        super().__init__(*args, **kwargs)
+        self.fields['grupos'].queryset = Group.objects.all()
+        if self.instance.pk:
+            self.fields['grupos'].initial = self.instance.groups.all()
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        if commit:
+            user.save()
+            # Actualizar grupos
+            user.groups.set(self.cleaned_data['grupos'])
+        return user
