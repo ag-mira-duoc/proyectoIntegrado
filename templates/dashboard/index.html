@@ -5,23 +5,9 @@
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2">Dashboard</h1>
-    <div class="btn-toolbar mb-2 mb-md-0">
-        <div class="btn-group me-2">
-            <button type="button" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-share"></i> Compartir
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-download"></i> Exportar
-            </button>
-        </div>
-    </div>
 </div>
 
 <div class="row mb-4">
-    <div class="col-12">
-        <h5 class="text-muted mb-3">Accesos Directos</h5>
-    </div>
-
     <div class="col-md-6 col-lg-5 mb-4">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-header bg-primary text-white">
@@ -29,25 +15,11 @@
                     <h6 class="m-0 font-weight-bold"><i class="bi bi-calculator"></i> Gestión Tributaria</h6>
                 </div>
             </div>
-            <div class="card-body">
-                <p class="card-text text-muted small">Seleccione el método de ingreso de información tributaria:</p>
-                
-                <div class="d-grid gap-2">
-                    <a href="{% url 'calificaciones:listado' %}?action=ingresar" class="btn btn-outline-primary text-start">
-                        <i class="bi bi-pencil-square me-2"></i> Ingreso Manual (Factores)
-                    </a>
-
-                    <a href="{% url 'calificaciones:ingreso_monto' %}" class="btn btn-outline-success text-start">
-                        <i class="bi bi-currency-dollar me-2"></i> Ingreso por Monto (Calculadora)
-                    </a>
-
-                    <a href="{% url 'calificaciones:carga_masiva' %}" class="btn btn-outline-info text-start">
-                        <i class="bi bi-file-earmark-spreadsheet me-2"></i> Carga Masiva (CSV)
-                    </a>
-                </div>
-            </div>
-            <div class="card-footer bg-white border-top-0">
-                <a href="{% url 'calificaciones:listado' %}" class="small text-primary text-decoration-none">Ver listado completo &rarr;</a>
+            <div class="card-body text-center d-flex flex-column justify-content-center">
+                <p class="card-text text-muted mb-4">Acceda al mantenedor de calificaciones para gestionar, ingresar y auditar registros tributarios.</p>
+                <a href="{% url 'calificaciones:listado' %}" class="btn btn-primary btn-lg w-100">
+                    <i class="bi bi-arrow-right-circle me-2"></i> Ir a Calificaciones Tributarias
+                </a>
             </div>
         </div>
     </div>
@@ -61,20 +33,13 @@
                 </div>
             </div>
             <div class="card-body">
-                <p class="card-text text-muted small">Gestión de entidades y usuarios del sistema:</p>
-                
                 <div class="d-grid gap-2">
-                    <a href="{% url 'clientes:crear' %}" class="btn btn-outline-dark text-start">
-                        <i class="bi bi-person-plus me-2"></i> Registrar Nuevo Cliente
-                    </a>
-                    
                     <a href="{% url 'clientes:listado' %}" class="btn btn-outline-secondary text-start">
-                        <i class="bi bi-people me-2"></i> Ver Clientes
+                        <i class="bi bi-people me-2"></i> Gestión de Clientes
                     </a>
-
                     {% if user.is_superuser %}
                     <a href="{% url 'usuarios:listado' %}" class="btn btn-outline-secondary text-start">
-                        <i class="bi bi-person-badge me-2"></i> Gestionar Usuarios
+                        <i class="bi bi-person-badge me-2"></i> Gestión de Usuarios
                     </a>
                     {% endif %}
                 </div>
@@ -83,49 +48,4 @@
     </div>
     {% endif %}
 </div>
-
-<div class="row">
-    <div class="col-12">
-        <h5 class="text-muted mb-3">Resumen General</h5>
-    </div>
-
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-start border-4 border-primary shadow h-100 py-2">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col me-2">
-                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                            Calificaciones (Total)</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">
-                            --
-                        </div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="bi bi-journal-check fs-2 text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-start border-4 border-success shadow h-100 py-2">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col me-2">
-                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                            Clientes Activos</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">
-                            --
-                        </div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="bi bi-people fs-2 text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 {% endblock %}

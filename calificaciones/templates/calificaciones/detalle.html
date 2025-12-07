@@ -49,10 +49,8 @@
                                     <span class="badge bg-success">{{ calificacion.get_estado_display }}</span>
                                 {% elif calificacion.estado == 'REVISION' %}
                                     <span class="badge bg-warning text-dark">{{ calificacion.get_estado_display }}</span>
-                                {% elif calificacion.estado == 'RECHAZADA' %}
-                                    <span class="badge bg-danger">{{ calificacion.get_estado_display }}</span>
                                 {% else %}
-                                    <span class="badge bg-secondary">{{ calificacion.get_estado_display }}</span>
+                                    <span class="badge bg-danger">{{ calificacion.get_estado_display }}</span>
                                 {% endif %}
                             </td>
                         </tr>

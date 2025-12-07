@@ -323,7 +323,6 @@ class Calificacion(models.Model):
         ('REVISION', 'En Revisión'),
         ('APROBADA', 'Aprobada'),
         ('RECHAZADA', 'Rechazada'),
-        ('ENVIADA_SII', 'Enviada al SII'),
     ]
 
     # Relaciones
