@@ -132,15 +132,24 @@ WSGI_APPLICATION = 'nuam_config.wsgi.application'
 #}
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'nuam_db2',
-        'USER': 'postgres',
-        'PASSWORD': 'admin',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
+   'default': dj_database_url.config(
+       default=config('DATABASE_URL', default='sqlite:///db.sqlite3'),
+       conn_max_age=600,
+       conn_health_checks=True,
+       ssl_require=True,  # Render requiere SSL fuera de la red privada, internamente lo maneja
+   )
 }
+
+#DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.postgresql',
+#        'NAME': 'nuam_db2',
+#        'USER': 'postgres',
+#        'PASSWORD': 'admin',
+#        'HOST': 'localhost',
+#        'PORT': '5432',
+#    }
+#}
 
 # Configuración adicional de PostgreSQL
 DATABASES['default']['OPTIONS'] = {
@@ -540,6 +549,8 @@ MEDIA_ROOT_PATH.mkdir(exist_ok=True)
 # Crear carpeta de static si no existe
 STATIC_DIR = BASE_DIR / 'static'
 STATIC_DIR.mkdir(exist_ok=True)
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
 # ==============================================================================
