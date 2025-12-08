@@ -21,4 +21,4 @@ COPY . .
 
 RUN python manage.py collectstatic --noinput
 
-CMD gunicorn nuam_config.wsgi:application --bind 0.0.0.0:$PORT
+CMD CMD sh -c "python manage.py migrate && gunicorn nuam_config.wsgi:application --bind 0.0.0.0:$PORT"

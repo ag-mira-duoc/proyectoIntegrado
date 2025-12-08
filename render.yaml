@@ -4,8 +4,6 @@ services:
     env: docker 
     plan: free
     region: oregon
-
-    startCommand: python manage.py migrate && gunicorn nuam_config.wsgi:application --bind 0.0.0.0:$PORT
     
     envVars:
       - key: PYTHON_VERSION
