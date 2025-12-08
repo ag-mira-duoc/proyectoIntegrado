@@ -242,60 +242,46 @@ def reporte_calificaciones_por_agente(request):
 @analista_requerido
 def carga_masiva_factores(request):
     """
-    Paso 1: Recibe el archivo, lo procesa y devuelve el contexto para el Modal de Previsualización.
+    Procesa PDF, detecta cliente y muestra previsualización.
     """
     if request.method == 'POST':
         archivo = request.FILES.get('archivo_pdf')
-        
         if archivo:
             try:
-                # 1. Procesar PDF (Extracción Inteligente)
-                resultado = procesar_archivo_pdf(archivo)
-                
-                if resultado.get('error'):
-                    messages.error(request, resultado['error'])
+                res = procesar_archivo_pdf(archivo)
+                if res.get('error'):
+                    messages.error(request, res['error'])
                     return redirect('calificaciones:listado')
 
-                # 2. Verificar Cliente en BD
-                rut_detectado = resultado['cliente_detectado'].get('rut')
-                cliente_db = None
-                cliente_existe = False
-                
-                if rut_detectado:
-                    # Buscar exacto
-                    cliente_db = Cliente.objects.filter(rut=rut_detectado).first()
-                    cliente_existe = cliente_db is not None
+                rut = res['cliente_detectado'].get('rut')
+                cliente_db = Cliente.objects.filter(rut=rut).first() if rut else None
 
-                # 3. Preparar datos para Sesión
+                # Serializar para sesión
                 datos_sesion = {
-                    'tipo': resultado['tipo'],
-                    'metadata': resultado['metadata'],
-                    'cliente': resultado['cliente_detectado'], # {nombre, rut, tipo_persona}
-                    'cliente_existe': cliente_existe,
+                    'metadata': res['metadata'],
+                    'cliente': res['cliente_detectado'],
+                    'cliente_existe': cliente_db is not None,
                     'cliente_id': cliente_db.id if cliente_db else None,
                     'filas': []
                 }
-
-                # Serializar filas (Decimal -> str)
-                for fila in resultado['filas']:
-                    fila_serializada = fila.copy()
-                    for k, v in fila.items():
-                        if isinstance(v, Decimal): fila_serializada[k] = str(v)
-                    datos_sesion['filas'].append(fila_serializada)
+                for f in res['filas']:
+                    row = f.copy()
+                    for k,v in f.items(): 
+                        if isinstance(v, Decimal): row[k] = str(v)
+                    datos_sesion['filas'].append(row)
 
                 request.session['carga_temporal'] = datos_sesion
                 
-                # 4. Renderizar lista con modal abierto
+                # Renderizar lista con modal abierto
                 context = get_lista_context(request)
                 context['preview_data'] = datos_sesion
                 context['modal_open'] = 'modalPrevisualizacion'
-                
                 return render(request, 'calificaciones/lista.html', context)
 
             except Exception as e:
-                messages.error(request, f"Error al procesar archivo: {str(e)}")
+                messages.error(request, f"Error: {e}")
                 return redirect('calificaciones:listado')
-    
+
     return redirect('calificaciones:listado')
 
 @login_required

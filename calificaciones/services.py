@@ -8,57 +8,36 @@ from decimal import Decimal
 # ==============================================================================
 
 MAPA_KEYWORDS_C70 = {
-    # Cabeceras generales
     'numero_dividendo': ['nro', 'cert', 'folio'],
-    
-    # FACTORES RENTAS AFECTAS (STUT)
-    'factor8': ['generados', 'contar', '01.01.2017'],       # Con crédito IDPC desde 2017
-    'factor9': ['acumulados', 'hasta', '31.12.2016'],       # Con crédito IDPC hasta 2016
-    'factor10': ['pago', 'voluntario'],                     # IDPC Voluntario
-    'factor11': ['sin', 'derecho', 'credito'],              # Sin derecho a crédito
-
-    # FACTORES RENTAS EXENTAS (REX)
-    'factor12': ['rap', 'diferencia', 'inicial'],           # RAP
-    'factor13': ['otras', 'rentas', 'prioridad'],           # REX sin prioridad
-    'factor14': ['desproporcionadas'],                      # Exceso dist. desproporcionada
-    'factor15': ['isfut', '20.780'],                        # ISFUT histórico
-    'factor16': ['isfut', '21.210'],                        # ISFUT nuevo / Rentas < 1983
-    
-    # Rentas Exentas IGC (Art 11 Ley 18.401)
-    'factor17': ['18.401', 'afectas'],                      # Con restitución / Afectas
-    'factor18': ['18.401', 'exentas'],                      # Sin restitución / Exentas IGC
-    
-    # Ingresos No Renta
-    'factor19': ['no', 'constitutivos', 'renta'],
-
-    # CRÉDITOS
-    'factor20': ['credito', 'ipe'],                         # IPE
-    'factor21': ['tasa', 'adicional', '21'],                # Ex Art 21
-    
-    # OTROS
-    'factor_actualizacion': ['tef', 'tasa', 'efectiva'],
+    'factor8': ['generados', 'contar', '01.01.2017'],
+    'factor9': ['acumulados', 'hasta', '31.12.2016'],
+    'factor10': ['pago', 'voluntario'],
+    'factor11': ['sin', 'derecho', 'credito'],
+    'factor12': ['rap', 'diferencia'],
+    'factor13': ['otras', 'rentas'],
+    'factor14': ['desproporcionadas'],
+    'factor15': ['isfut', '20.780'],
+    'factor16': ['isfut', '21.210'],
+    'factor17': ['18.401', 'afectas'],
+    'factor18': ['18.401', 'exentas'],
+    'factor19': ['no', 'constitutivos'],
+    'factor20': ['ipe'],
+    'factor21': ['tasa', 'adicional'],
+    'factor_actualizacion': ['tef', 'tasa'],
     'isfut': ['isfut']
 }
 
 MAPA_KEYWORDS_C44 = {
-    # El C44 suele tener desglose por fondo, aquí buscamos columnas clave
     'fecha_pago': ['fecha', 'operacion'],
     'instrumento': ['nombre', 'fondo'], 
     'valor_historico': ['monto', 'historico'],
     'factor_actualizacion': ['factor', 'actualiz'],
-    'monto_actualizado': ['monto', 'actualizad'],
-    
-    # Factores C44 (Aproximación estándar)
-    'factor8': ['no', 'sujetos', 'restitucion', '2019', 'con', 'derecho'], 
-    'factor9': ['no', 'sujetos', 'restitucion', '2019', 'sin', 'derecho'],
-    'factor10': ['afectas', 'restitucion', '2020', 'con', 'derecho'],
-    'factor11': ['afectas', 'restitucion', '2020', 'sin', 'derecho'],
-    'factor12': ['sujetos', 'restitucion', 'con', 'derecho'],
-    'factor13': ['sujetos', 'restitucion', 'sin', 'derecho'],
-    'factor17': ['exentas', 'restitucion', 'con', 'derecho'],
-    'factor18': ['exentas', 'restitucion', 'sin', 'derecho'],
-    'factor20': ['credito', 'ipe'],
-    'factor21': ['tasa', 'adicional', '21']
+    'factor8': ['no', 'sujetos', 'restitucion', '2019', 'con'], 
+    'factor9': ['no', 'sujetos', 'restitucion', '2019', 'sin'],
+    'factor10': ['afectas', 'restitucion', '2020', 'con'],
+    'factor11': ['afectas', 'restitucion', '2020', 'sin'],
+    'factor17': ['exentas', 'restitucion', 'con'],
+    'factor18': ['exentas', 'restitucion', 'sin']
 }
 
 # ==============================================================================
@@ -66,30 +45,16 @@ MAPA_KEYWORDS_C44 = {
 # ==============================================================================
 
 def limpiar_texto(texto):
-    """Normaliza texto para búsqueda de cabeceras."""
     if not texto: return ""
     return str(texto).lower().strip().replace('\n', ' ')
 
 def limpiar_moneda(valor):
-    """
-    Convierte string formateado (ej: '52.960.217' o '1.000,50') a Decimal.
-    Maneja el formato chileno de miles con punto.
-    """
     if not valor: return Decimal(0)
     if isinstance(valor, (int, float, Decimal)): return valor
-    
-    val_str = str(valor).strip()
-    # 1. Eliminar puntos de miles (1.000.000 -> 1000000)
-    val_str = val_str.replace('.', '')
-    # 2. Reemplazar coma decimal por punto (10,5 -> 10.5)
-    val_str = val_str.replace(',', '.')
-    # 3. Limpiar cualquier basura restante (excepto dígitos, punto y menos)
+    val_str = str(valor).strip().replace('.', '').replace(',', '.') # 1.000,00 -> 1000.00
     val_str = re.sub(r'[^\d\.-]', '', val_str)
-    
-    try:
-        return Decimal(val_str)
-    except:
-        return Decimal(0)
+    try: return Decimal(val_str)
+    except: return Decimal(0)
 
 def detectar_tipo_certificado(texto):
     texto = texto.upper()
