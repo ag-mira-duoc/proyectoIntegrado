@@ -11,4 +11,6 @@ urlpatterns = [
     path('', views.usuarios_lista, name='listado'),
     path('<int:pk>/', views.usuario_detalle, name='detalle'),
     path('<int:pk>/editar/', views.usuario_editar, name='editar'),
+    path('lista/', views.usuarios_lista, name='lista'),
+    path('cambiar-rol/<int:pk>/', views.usuario_cambiar_rol, name='cambiar_rol'),
 ]

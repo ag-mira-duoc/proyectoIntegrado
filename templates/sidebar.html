@@ -1,19 +1,48 @@
-<div class="position-sticky pt-3">
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+    </li>
+    
+    <li class="nav-item">
+        <a class="nav-link {% if 'calificaciones' in request.path %}active{% endif %}" href="{% url 'calificaciones:listado' %}">
+            <i class="bi bi-file-earmark-text"></i> Calificaciones
+        </a>
+    </li>
+
+    {% if user.is_superuser or user.es_administrador %}
     <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-        <span>MENÚ PRINCIPAL</span>
+        <span>Administración</span>
     </h6>
-    <ul class="nav flex-column">
-        <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}"><i class="bi bi-house-door"></i> Dashboard</a></li>
-        {% if is_analista or is_administrador %}
-        <li class="nav-item"><a class="nav-link" href="{% url 'calificaciones:listado' %}"><i class="bi bi-file-earmark-text"></i> Calificaciones</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'clientes:listado' %}"><i class="bi bi-people"></i> Clientes</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'calificaciones:reporte_agentes' %}"><i class="bi bi-graph-up"></i> Reportes</a></li>
-        {% endif %}
-        {% if is_administrador %}
-        <h6 class="sidebar-heading px-3 mt-4 mb-1 text-muted"><span>ADMINISTRACIÓN</span></h6>
-        <li class="nav-item"><a class="nav-link" href="{% url 'usuarios:listado' %}"><i class="bi bi-person-gear"></i> Usuarios</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'corredoras:listado' %}"><i class="bi bi-building"></i> Corredoras</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'admin:index' %}"><i class="bi bi-gear"></i> Admin Django</a></li>
-        {% endif %}
-    </ul>
-</div>
+
+    <li class="nav-item">
+        <a class="nav-link {% if 'corredoras' in request.path %}active{% endif %}" href="{% url 'corredoras:listado' %}">
+            <i class="bi bi-building"></i> Gestión de Corredoras
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link {% if 'clientes' in request.path %}active{% endif %}" href="{% url 'clientes:listado' %}">
+            <i class="bi bi-people"></i> Gestión de Clientes
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'admin:index' %}" target="_blank">
+            <i class="bi bi-shield-lock"></i> Panel Admin (Roles)
+        </a>
+    </li>
+    {% endif %}
+
+    {% if user.is_superuser or user.es_administrador or user.es_auditor %}
+    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+        <span>Auditoría</span>
+    </h6>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'auditoria:exportar_excel' %}">
+            <i class="bi bi-file-earmark-excel"></i> Descargar Logs
+        </a>
+    </li>
+    {% endif %}
+</ul>

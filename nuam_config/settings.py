@@ -536,12 +536,9 @@ LOGS_DIR.mkdir(exist_ok=True)
 MEDIA_ROOT_PATH = Path(MEDIA_ROOT)
 MEDIA_ROOT_PATH.mkdir(exist_ok=True)
 
-# Crear carpeta de static si no existe
-STATIC_DIR = BASE_DIR / 'static'
-STATIC_DIR.mkdir(exist_ok=True)
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage' 
 
 # ==============================================================================
 # VARIABLES DE ENTORNO REQUERIDAS PARA RENDER
