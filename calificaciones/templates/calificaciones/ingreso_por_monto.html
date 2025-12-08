@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Carga por Monto - NUAM{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="bi bi-calculator"></i> Carga por Monto (Cálculo de Factores)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info border-0 bg-light">
+                        <small><i class="bi bi-info-circle"></i> Ingrese los montos bases. El sistema calculará automáticamente los factores tributarios dividiendo por el <strong>Monto Total de Reparto</strong>.</small>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {{ form|crispy }}
+
+                        <hr>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'calificaciones:listado' %}" class="btn btn-outline-secondary me-md-2">
+                                Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-gear"></i> Calcular y Guardar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

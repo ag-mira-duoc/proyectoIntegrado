@@ -3,9 +3,11 @@ services:
   - type: web
     name: nuam-web
     runtime: python
-    plan: free # Importante: cambiar a free
+    plan: free
     region: oregon
     buildCommand: |
+      apt-get update && apt-get install -y tesseract-ocr tesseract-ocr-spa poppler-utils &&
+      pip install --upgrade pip &&
       pip install -r requirements.txt &&
       python manage.py collectstatic --noinput &&
       python manage.py migrate
@@ -25,9 +27,8 @@ services:
           property: connectionString
 
 databases:
-  # --- BASE DE DATOS (Gratis por 30 días) ---
   - name: nuam-db
     databaseName: nuam_production
     user: nuam_user
-    plan: free # Importante: cambiar a free
+    plan: free
     region: oregon

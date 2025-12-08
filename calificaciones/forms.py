@@ -155,17 +155,23 @@ class IngresoMontoForm(forms.Form):
 
 class CargaMasivaFactoresForm(forms.Form):
     """
-    Formulario simple para subir archivo CSV de carga masiva.
+    Formulario para subir PDF de carga masiva (Certificados 70/44).
     """
-    archivo_csv = forms.FileField(
-        label="Archivo CSV",
-        help_text="Formato requerido: CSV con encabezados (Ejercicio, Mercado, Instrumento, Factor 8...)",
-        widget=forms.FileInput(attrs={'class': 'form-control', 'accept': '.csv'})
+    cliente = forms.ModelChoiceField(
+        queryset=Cliente.objects.filter(activo=True),
+        label="Cliente Asociado",
+        help_text="Cliente al que corresponde este certificado.",
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    archivo_pdf = forms.FileField(
+        label="Archivo PDF",
+        help_text="Formatos soportados: Certificado N° 70, Certificado N° 44 (Digital o Escaneado).",
+        widget=forms.FileInput(attrs={'class': 'form-control', 'accept': '.pdf'})
     )
     
-    def clean_archivo_csv(self):
-        archivo = self.cleaned_data.get('archivo_csv')
+    def clean_archivo_pdf(self):
+        archivo = self.cleaned_data.get('archivo_pdf')
         if archivo:
-            if not archivo.name.endswith('.csv'):
-                raise ValidationError("El archivo debe tener extensión .csv")
+            if not archivo.name.lower().endswith('.pdf'):
+                raise ValidationError("El archivo debe tener extensión .pdf")
         return archivo

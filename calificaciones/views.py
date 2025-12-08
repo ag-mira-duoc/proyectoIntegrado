@@ -14,12 +14,51 @@ from django.db.models import Q, Count
 from django.http import HttpResponse
 from django.utils import timezone
 
-from .models import Calificacion, Cliente, Corredora, User
+from .models import Calificacion, Cliente, Corredora, User, PersonaNatural, PersonaJuridica 
 from .forms import (
     CalificacionForm, ClienteForm, PersonaNaturalForm, PersonaJuridicaForm, CorrederaForm,
     IngresoMontoForm, CargaMasivaFactoresForm
 )
+from .services import procesar_archivo_pdf
+#from documentos.firebase_utils import subir_archivo_firebase
+
 from usuarios.decorators import analista_requerido, administrador_requerido, rol_requerido
+
+# ============================================================================
+# HELPER: Contexto común para la lista (Evita duplicar código)
+# ============================================================================
+def get_lista_context(request):
+    """Retorna el contexto base necesario para renderizar lista.html"""
+    calificaciones = Calificacion.objects.select_related('cliente', 'user', 'corredora').all()
+    
+    # Visibilidad
+    es_privilegiado = (request.user.is_superuser or request.user.es_administrador() or request.user.es_auditor())
+    if not es_privilegiado:
+        if hasattr(request.user, 'corredora') and request.user.corredora:
+            calificaciones = calificaciones.filter(corredora=request.user.corredora)
+        else:
+            calificaciones = calificaciones.filter(user=request.user)
+
+    # Orden y Paginación
+    calificaciones = calificaciones.order_by('-anno', '-created_at')
+    paginator = Paginator(calificaciones, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Listas para filtros y modales
+    clientes_list = Cliente.objects.filter(activo=True)
+    years = range(2020, datetime.now().year + 2)
+    usuarios_list = User.objects.filter(is_active=True).order_by('apellido') if es_privilegiado else []
+
+    return {
+        'calificaciones': page_obj,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
+        'years': years,
+        'clientes_list': clientes_list,
+        'usuarios_list': usuarios_list,
+        'es_privilegiado': es_privilegiado,
+    }
 
 
 # ============================================================================
@@ -29,78 +68,7 @@ from usuarios.decorators import analista_requerido, administrador_requerido, rol
 @login_required
 @rol_requerido('Administradores', 'Analistas', 'Auditores')
 def calificaciones_lista(request):
-    """
-    Vista de lista de calificaciones con filtros y modal de ingreso.
-    """
-    # Optimización: prefetch_related para evitar N+1 queries
-    calificaciones = Calificacion.objects.select_related('cliente', 'user', 'corredora').all()
-    
-    # --- VISIBILIDAD ---
-    # Auditores y Administradores ven todo.
-    # Analistas solo ven lo de su corredora.
-    es_privilegiado = (
-        request.user.is_superuser or 
-        getattr(request.user, 'es_administrador', lambda: False)() or 
-        getattr(request.user, 'es_auditor', lambda: False)()
-    )
-
-    if not es_privilegiado:
-        if hasattr(request.user, 'corredora') and request.user.corredora:
-            calificaciones = calificaciones.filter(corredora=request.user.corredora)
-        else:
-            calificaciones = calificaciones.filter(user=request.user)
-    
-    # --- FILTROS ---
-    anno = request.GET.get('anno')
-    origen = request.GET.get('origen') # Ahora filtra por ID de USUARIO
-    mercado = request.GET.get('mercado')
-    search = request.GET.get('search')
-    
-    if anno:
-        calificaciones = calificaciones.filter(anno=anno)
-    
-    if mercado:
-        calificaciones = calificaciones.filter(mercado=mercado)
-
-    if origen:
-        # Filtra por el usuario que ingresó la calificación
-        calificaciones = calificaciones.filter(user__id=origen)
-
-    if search:
-        calificaciones = calificaciones.filter(
-            Q(instrumento__icontains=search) |
-            Q(cliente__rut__icontains=search) |
-            Q(descripcion__icontains=search)
-        )
-    
-    # Orden solicitado: Ejercicio descendente
-    calificaciones = calificaciones.order_by('-anno', 'instrumento')
-    
-    # Paginación
-    paginator = Paginator(calificaciones, 25)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    
-    # Contexto
-    clientes_list = Cliente.objects.filter(activo=True)
-    years = range(2020, datetime.now().year + 2)
-    
-    # Lista de usuarios para el filtro de "Origen" (Solo para Admins/Auditores)
-    # Mostramos usuarios activos ordenados por nombre para facilitar la búsqueda
-    usuarios_list = []
-    if es_privilegiado:
-        usuarios_list = User.objects.filter(is_active=True).order_by('nombre', 'apellido')
-
-    context = {
-        'calificaciones': page_obj,
-        'page_obj': page_obj,
-        'is_paginated': page_obj.has_other_pages(),
-        'years': years,
-        'clientes_list': clientes_list,
-        'usuarios_list': usuarios_list, # Lista de usuarios para el filtro
-        'es_privilegiado': es_privilegiado,
-    }
-    
+    context = get_lista_context(request)
     return render(request, 'calificaciones/lista.html', context)
 
 
@@ -241,57 +209,6 @@ def ingreso_por_monto(request):
     return render(request, 'calificaciones/ingreso_monto.html', {'form': form})
 
 @login_required
-@analista_requerido
-def carga_masiva_factores(request):
-    if request.method == 'POST':
-        form = CargaMasivaFactoresForm(request.POST, request.FILES)
-        if form.is_valid():
-            csv_file = request.FILES['archivo_csv']
-            decoded_file = csv_file.read().decode('utf-8')
-            io_string = io.StringIO(decoded_file)
-            reader = csv.DictReader(io_string)
-            cont_exito = 0
-            for row in reader:
-                try:
-                    def clean_dec(val):
-                        if not val: return Decimal(0)
-                        return Decimal(val.replace(',', '.'))
-                    
-                    fecha_str = row.get('Fecha', '')
-                    fecha_obj = None
-                    if fecha_str:
-                        fecha_obj = datetime.strptime(fecha_str, '%d-%m-%Y').date()
-
-                    nuevo_obj = Calificacion(
-                        anno=int(row['Ejercicio']),
-                        mercado=row['Mercado'][:3],
-                        instrumento=row['Instrumento'][:50],
-                        fecha_pago=fecha_obj,
-                        secuencia_evento=int(row['Secuencia']),
-                        numero_dividendo=int(row.get('Numero de dividendo', 0)),
-                        tipo_sociedad=row.get('Tipo sociedad', '')[:1],
-                        valor_historico=clean_dec(row.get('Valor Historico')),
-                        factor8=clean_dec(row.get('Factor 8')),
-                        factor9=clean_dec(row.get('Factor 9')),
-                        # ... resto de factores ...
-                        user=request.user,
-                        estado='BORRADOR',
-                        ingreso_montos=False
-                    )
-                    if hasattr(request.user, 'corredora') and request.user.corredora:
-                        nuevo_obj.corredora = request.user.corredora
-                    nuevo_obj.save()
-                    cont_exito += 1
-                except Exception:
-                    pass
-            messages.success(request, f"Carga finalizada. {cont_exito} registros creados.")
-            return redirect('calificaciones:listado')
-    else:
-        form = CargaMasivaFactoresForm()
-    return render(request, 'calificaciones/carga_masiva.html', {'form': form})
-
-
-@login_required
 @rol_requerido('Administradores', 'Analistas', 'Auditores')
 def reporte_calificaciones_por_agente(request):
     if request.user.is_superuser or request.user.es_administrador():
@@ -321,6 +238,155 @@ def reporte_calificaciones_por_agente(request):
         'corredora': corredora, 'corredoras': corredoras, 'anno': anno, 'estadisticas': estadisticas, 'years': range(2020, datetime.now().year + 2)
     })
 
+@login_required
+@analista_requerido
+def carga_masiva_factores(request):
+    """
+    Paso 1: Recibe el archivo, lo procesa y devuelve el contexto para el Modal de Previsualización.
+    """
+    if request.method == 'POST':
+        archivo = request.FILES.get('archivo_pdf')
+        
+        if archivo:
+            try:
+                # 1. Procesar PDF (Extracción Inteligente)
+                resultado = procesar_archivo_pdf(archivo)
+                
+                if resultado.get('error'):
+                    messages.error(request, resultado['error'])
+                    return redirect('calificaciones:listado')
+
+                # 2. Verificar Cliente en BD
+                rut_detectado = resultado['cliente_detectado'].get('rut')
+                cliente_db = None
+                cliente_existe = False
+                
+                if rut_detectado:
+                    # Buscar exacto
+                    cliente_db = Cliente.objects.filter(rut=rut_detectado).first()
+                    cliente_existe = cliente_db is not None
+
+                # 3. Preparar datos para Sesión
+                datos_sesion = {
+                    'tipo': resultado['tipo'],
+                    'metadata': resultado['metadata'],
+                    'cliente': resultado['cliente_detectado'], # {nombre, rut, tipo_persona}
+                    'cliente_existe': cliente_existe,
+                    'cliente_id': cliente_db.id if cliente_db else None,
+                    'filas': []
+                }
+
+                # Serializar filas (Decimal -> str)
+                for fila in resultado['filas']:
+                    fila_serializada = fila.copy()
+                    for k, v in fila.items():
+                        if isinstance(v, Decimal): fila_serializada[k] = str(v)
+                    datos_sesion['filas'].append(fila_serializada)
+
+                request.session['carga_temporal'] = datos_sesion
+                
+                # 4. Renderizar lista con modal abierto
+                context = get_lista_context(request)
+                context['preview_data'] = datos_sesion
+                context['modal_open'] = 'modalPrevisualizacion'
+                
+                return render(request, 'calificaciones/lista.html', context)
+
+            except Exception as e:
+                messages.error(request, f"Error al procesar archivo: {str(e)}")
+                return redirect('calificaciones:listado')
+    
+    return redirect('calificaciones:listado')
+
+@login_required
+@analista_requerido
+def confirmar_carga(request):
+    """
+    Paso 2: Guarda automáticamente usando los datos detectados.
+    """
+    if request.method == 'POST':
+        datos = request.session.get('carga_temporal')
+        if not datos: return redirect('calificaciones:listado')
+            
+        try:
+            cliente = None
+            
+            # --- A. LÓGICA AUTOMÁTICA DE CLIENTE ---
+            if datos['cliente_existe'] and datos.get('cliente_id'):
+                # Usar existente
+                cliente = Cliente.objects.get(pk=datos['cliente_id'])
+            else:
+                # Crear NUEVO automáticamente
+                rut_nuevo = datos['cliente']['rut']
+                nombre_nuevo = datos['cliente']['nombre']
+                tipo_persona = datos['cliente']['tipo_persona'] # 'natural' o 'juridica' (Ya detectado en services)
+                
+                if not rut_nuevo:
+                    raise Exception("No se pudo detectar el RUT del cliente en el archivo.")
+
+                # Crear cliente base
+                cliente = Cliente.objects.create(rut=rut_nuevo, activo=True)
+                
+                if tipo_persona == 'juridica':
+                    PersonaJuridica.objects.create(
+                        cliente=cliente,
+                        razon_social=nombre_nuevo or "Razón Social Pendiente",
+                        domicilio_tributario="Dirección extraída de PDF"
+                    )
+                else:
+                    # Separar nombre (simple)
+                    if nombre_nuevo:
+                        partes = nombre_nuevo.split(' ', 1)
+                        nombre = partes[0]
+                        apellido = partes[1] if len(partes) > 1 else "."
+                    else:
+                        nombre, apellido = "Nombre", "Pendiente"
+                        
+                    PersonaNatural.objects.create(
+                        cliente=cliente,
+                        nombre=nombre,
+                        apellido=apellido
+                    )
+
+            # --- B. GUARDAR CALIFICACIONES ---
+            contador = 0
+            for fila in datos['filas']:
+                fecha_obj = None
+                if fila.get('fecha_pago'):
+                    try: fecha_obj = datetime.strptime(str(fila['fecha_pago']), '%d/%m/%Y').date()
+                    except: pass
+
+                calificacion = Calificacion(
+                    cliente=cliente,
+                    user=request.user,
+                    anno=datos['metadata'].get('anno', datetime.now().year),
+                    mercado='AC',
+                    instrumento=fila.get('instrumento', 'Sin Instrumento')[:50],
+                    fecha_pago=fecha_obj,
+                    factor_actualizacion=Decimal(fila.get('factor_actualizacion', 0)),
+                    isfut=fila.get('isfut', False),
+                    estado='BORRADOR',
+                    ingreso_montos=False
+                )
+                
+                for i in range(8, 38):
+                    key = f'factor{i}'
+                    val = Decimal(fila.get(key, 0))
+                    setattr(calificacion, key, val)
+
+                if hasattr(request.user, 'corredora') and request.user.corredora:
+                    calificacion.corredora = request.user.corredora
+                    
+                calificacion.save()
+                contador += 1
+            
+            del request.session['carga_temporal']
+            messages.success(request, f"Carga finalizada. Cliente: {cliente.get_nombre_completo()}. Registros: {contador}.")
+            
+        except Exception as e:
+            messages.error(request, f"Error al guardar: {str(e)}")
+            
+    return redirect('calificaciones:listado')
 
 # ============================================================================
 # VISTAS DE CLIENTES (CRUD)

@@ -121,16 +121,6 @@ WSGI_APPLICATION = 'nuam_config.wsgi.application'
 # CONFIGURACIÓN DE BASE DE DATOS - POSTGRESQL
 # ==============================================================================
 
-# Configuración automática para Render (usa DATABASE_URL)
-#DATABASES = {
-#    'default': dj_database_url.config(
-#        default=config('DATABASE_URL', default='postgresql://nuam_user:nuam_password_2025@localhost:5432/nuam_db'),
-#        conn_max_age=600,          # Conexiones persistentes (10 min)
-#        conn_health_checks=True,   # Verificación de salud de conexiones
-#        ssl_require=not DEBUG,     # SSL en producción
-#    )
-#}
-
 DATABASES = {
    'default': dj_database_url.config(
        default=config('DATABASE_URL', default='sqlite:///db.sqlite3'),
