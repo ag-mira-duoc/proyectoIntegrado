@@ -130,21 +130,21 @@ DATABASES = {
    )
 }
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'nuam_db2',
-        'USER': 'postgres',
-        'PASSWORD': 'admin',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
-}
+#DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.postgresql',
+#        'NAME': 'nuam_db2',
+#        'USER': 'postgres',
+#        'PASSWORD': 'admin',
+#        'HOST': 'localhost',
+#        'PORT': '5432',
+#    }
+#}
 
 # Configuración adicional de PostgreSQL
-#DATABASES['default']['OPTIONS'] = {
-#    'options': '-c search_path=public',
-#}
+DATABASES['default']['OPTIONS'] = {
+    'options': '-c search_path=public',
+}
 
 # Modelo de usuario personalizado
 AUTH_USER_MODEL = 'usuarios.User'
