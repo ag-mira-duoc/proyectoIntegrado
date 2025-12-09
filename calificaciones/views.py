@@ -339,8 +339,15 @@ def confirmar_carga(request):
             for fila in datos['filas']:
                 fecha_obj = None
                 if fila.get('fecha_pago'):
-                    try: fecha_obj = datetime.strptime(str(fila['fecha_pago']), '%d/%m/%Y').date()
-                    except: pass
+                    try:
+                        # Intenta varios formatos por si la IA devuelve YYYY-MM-DD o DD-MM-YYYY
+                        fecha_str = str(fila['fecha_pago']).replace('-', '/')
+                        fecha_obj = datetime.strptime(fecha_str, '%d/%m/%Y').date()
+                    except ValueError:
+                        try:
+                            fecha_obj = datetime.strptime(fecha_str, '%Y/%m/%d').date()
+                        except:
+                            pass
 
                 calificacion = Calificacion(
                     cliente=cliente,

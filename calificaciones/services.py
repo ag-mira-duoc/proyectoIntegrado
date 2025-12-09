@@ -1,286 +1,177 @@
-import pdfplumber
+import os
+import json
+import time
 import re
+import google.generativeai as genai
 from datetime import datetime
 from decimal import Decimal
+from django.conf import settings
+from decouple import config
 
-# ==============================================================================
-# 1. MAPAS DE KEYWORDS (Configuración de Columnas)
-# ==============================================================================
+# Configura la API
+api_key = getattr(settings, 'GOOGLE_API_KEY', None) or config('GOOGLE_API_KEY', default=os.getenv('GOOGLE_API_KEY'))
+genai.configure(api_key=api_key)
 
-MAPA_KEYWORDS_C70 = {
-    'numero_dividendo': ['nro', 'cert', 'folio'],
-    'factor8': ['generados', 'contar', '01.01.2017'],
-    'factor9': ['acumulados', 'hasta', '31.12.2016'],
-    'factor10': ['pago', 'voluntario'],
-    'factor11': ['sin', 'derecho', 'credito'],
-    'factor12': ['rap', 'diferencia'],
-    'factor13': ['otras', 'rentas'],
-    'factor14': ['desproporcionadas'],
-    'factor15': ['isfut', '20.780'],
-    'factor16': ['isfut', '21.210'],
-    'factor17': ['18.401', 'afectas'],
-    'factor18': ['18.401', 'exentas'],
-    'factor19': ['no', 'constitutivos'],
-    'factor20': ['ipe'],
-    'factor21': ['tasa', 'adicional'],
-    'factor_actualizacion': ['tef', 'tasa'],
-    'isfut': ['isfut']
-}
-
-MAPA_KEYWORDS_C44 = {
-    'fecha_pago': ['fecha', 'operacion'],
-    'instrumento': ['nombre', 'fondo'], 
-    'valor_historico': ['monto', 'historico'],
-    'factor_actualizacion': ['factor', 'actualiz'],
-    'factor8': ['no', 'sujetos', 'restitucion', '2019', 'con'], 
-    'factor9': ['no', 'sujetos', 'restitucion', '2019', 'sin'],
-    'factor10': ['afectas', 'restitucion', '2020', 'con'],
-    'factor11': ['afectas', 'restitucion', '2020', 'sin'],
-    'factor17': ['exentas', 'restitucion', 'con'],
-    'factor18': ['exentas', 'restitucion', 'sin']
-}
-
-# ==============================================================================
-# 2. FUNCIONES DE DICCIONARIO Y LIMPIEZA
-# ==============================================================================
-
-def limpiar_texto(texto):
-    if not texto: return ""
-    return str(texto).lower().strip().replace('\n', ' ')
-
-def limpiar_moneda(valor):
+def limpiar_moneda_ai(valor):
+    """Convierte respuestas numéricas de la IA a Decimal."""
     if not valor: return Decimal(0)
-    if isinstance(valor, (int, float, Decimal)): return valor
-    val_str = str(valor).strip().replace('.', '').replace(',', '.') # 1.000,00 -> 1000.00
-    val_str = re.sub(r'[^\d\.-]', '', val_str)
-    try: return Decimal(val_str)
-    except: return Decimal(0)
-
-def detectar_tipo_certificado(texto):
-    texto = texto.upper()
-    if "CERTIFICADO" in texto and "70" in texto: return "C70"
-    if "CERTIFICADO" in texto and "44" in texto: return "C44"
-    return "DESCONOCIDO"
-
-# ==============================================================================
-# 3. LÓGICA DE EXTRACCIÓN DE DATOS (CLIENTE Y FECHA)
-# ==============================================================================
-
-def detectar_cliente_completo(texto_pdf):
-    """
-    Extrae RUT y Nombre del titular usando un patrón flexible.
-    Determina si es Jurídica o Natural por reglas de negocio.
-    """
-    cliente = {
-        'nombre': 'Cliente Desconocido',
-        'rut': '',
-        'tipo_persona': 'natural',
-        'es_nuevo': True
-    }
+    if isinstance(valor, (int, float)): return Decimal(str(valor))
     
-    # Normalizar espacios
-    texto_clean = re.sub(r'\s+', ' ', texto_pdf)
-
-    # Regex Universal: Busca "titular/Sr(a) [NOMBRE] ... RUT [NUMERO]"
-    # Permite caracteres especiales en el nombre (. , & Ñ)
-    patron = r'(?:titular|Sr\.?\s*\(?a\)?)\s+(.+?)(?:,|\s+RUT)\s*RUT\s*N?[°º]?\s*[:\.]?\s*([\d\.]+-[0-9kK])'
-    match = re.search(patron, texto_clean, re.IGNORECASE)
+    val_str = str(valor).strip().replace('$', '').replace(' ', '')
     
-    if match:
-        nombre_raw = match.group(1).strip().upper()
-        rut_raw = match.group(2).replace('.', '').strip().upper()
+    # Manejo de formatos numéricos (1.000,00 vs 1000.00)
+    if ',' in val_str and '.' in val_str:
+        val_str = val_str.replace('.', '').replace(',', '.')
+    elif ',' in val_str:
+        val_str = val_str.replace(',', '.')
         
-        # Limpieza final nombre
-        if nombre_raw.endswith(','): nombre_raw = nombre_raw[:-1]
-        
-        cliente['nombre'] = nombre_raw
-        cliente['rut'] = rut_raw
-        
-        # Heurística de Tipo de Persona
-        es_juridica = False
-        keywords_empresa = ['SPA', 'S.A.', 'LTDA', 'LIMITADA', 'E.I.R.L', 'SOCIEDAD', 'INVERSIONES', 'FONDO', 'BANCO', 'CORREDORES']
-        
-        # Regla A: Nombre contiene siglas de empresa
-        if any(k in nombre_raw.split() for k in keywords_empresa):
-            es_juridica = True
-        
-        # Regla B: RUT mayor a 48 millones
-        try:
-            rut_num = int(rut_raw.split('-')[0])
-            if rut_num > 48000000:
-                es_juridica = True
-        except:
-            pass
-
-        cliente['tipo_persona'] = 'juridica' if es_juridica else 'natural'
-
-    return cliente
-
-def detectar_fecha_emision(texto_pdf):
-    """
-    Busca la fecha del documento en la cabecera (Ej: Santiago, 27 Marzo de 2024).
-    Retorna objeto date o la fecha de hoy por defecto.
-    """
-    meses = {
-        'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04', 'mayo': '05', 'junio': '06',
-        'julio': '07', 'agosto': '08', 'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12'
-    }
-    
-    # Patrón texto: "27 Marzo de 2024"
-    patron_txt = r'(\d{1,2})\s+de?\s*([a-zA-Z]+)\s+de?l?\s*(\d{4})'
-    match = re.search(patron_txt, texto_pdf, re.IGNORECASE)
-    
-    if match:
-        dia, mes_txt, anno = match.groups()
-        mes_num = meses.get(mes_txt.lower())
-        if mes_num:
-            try:
-                return datetime.strptime(f"{dia}-{mes_num}-{anno}", "%d-%m-%Y").date()
-            except:
-                pass
-    
-    # Patrón numérico: "27/03/2024"
-    match_num = re.search(r'(\d{2})/(\d{2})/(\d{4})', texto_pdf)
-    if match_num:
-        try:
-            return datetime.strptime(match_num.group(0), "%d/%m/%Y").date()
-        except:
-            pass
-            
-    return datetime.now().date()
-
-# ==============================================================================
-# 4. MOTOR DE PROCESAMIENTO DE TABLAS
-# ==============================================================================
-
-def identificar_indices_columnas(filas_tabla, tipo_cert):
-    """Mapea nombres de campos a índices de columna según keywords."""
-    mapa_indices = {}
-    keywords_map = MAPA_KEYWORDS_C70 if tipo_cert == 'C70' else MAPA_KEYWORDS_C44
-    
-    # Analizamos más filas (15) porque los encabezados del C70 son verticales y largos
-    cabecera_analisis = filas_tabla[:15]
-    max_cols = max(len(f) for f in cabecera_analisis) if cabecera_analisis else 0
-    
-    for col_idx in range(max_cols):
-        # Concatenamos todo el texto vertical de esa columna
-        texto_columna = " ".join([
-            limpiar_texto(fila[col_idx]) 
-            for fila in cabecera_analisis 
-            if col_idx < len(fila) and fila[col_idx]
-        ])
-        
-        for campo, keywords in keywords_map.items():
-            if campo in mapa_indices: continue
-            # Si TODAS las palabras clave están presentes
-            if all(k in texto_columna for k in keywords):
-                mapa_indices[campo] = col_idx
-                
-    return mapa_indices
-
-def extraer_datos_fila(fila, mapa_indices):
-    """Extrae datos de una fila específica usando el mapa."""
-    datos = {'ingreso_montos': False, 'fecha_pago': None}
-    
-    for campo, indice in mapa_indices.items():
-        if indice < len(fila):
-            val_raw = fila[indice]
-            
-            if 'factor' in campo or 'monto' in campo:
-                datos[campo] = limpiar_moneda(val_raw)
-            elif campo == 'isfut':
-                datos[campo] = True if limpiar_moneda(val_raw) > 0 else False
-            elif campo == 'fecha_pago':
-                datos[campo] = str(val_raw) # Se mantiene temporalmente
-            else:
-                datos[campo] = val_raw
-        else:
-             datos[campo] = 0 if 'factor' in campo else ""
-    return datos
+    try:
+        return Decimal(val_str)
+    except:
+        return Decimal(0)
 
 def procesar_archivo_pdf(archivo_memoria):
     """
-    Función principal llamada desde la vista.
+    Procesa el PDF usando el modelo 'gemini-1.5-flash' con instrucciones 
+    estrictas de mapeo de columnas para evitar duplicidad F8/F9 y confusión F27.
     """
-    datos_retorno = {
-        'tipo': 'DESCONOCIDO',
-        'metadata': {'rut_emisor': '', 'anno': datetime.now().year},
-        'cliente_detectado': {}, 
-        'filas': [],
-        'error': None
-    }
-
+    print(f"--- INICIANDO PROCESAMIENTO CON GEMINI FLASH (MODO TOTALES ESTRICTO) ---")
+    
     try:
-        with pdfplumber.open(archivo_memoria) as pdf:
-            # 1. Metadatos (Página 1)
-            first_page = pdf.pages[0]
-            texto_pag1 = first_page.extract_text() or ""
-            
-            datos_retorno['cliente_detectado'] = detectar_cliente_completo(texto_pag1)
-            datos_retorno['tipo'] = detectar_tipo_certificado(texto_pag1)
-            fecha_emision = detectar_fecha_emision(texto_pag1)
-            
-            match_anno = re.search(r'año\s*(?:comercial|tributario)\s*(\d{4})', texto_pag1, re.IGNORECASE)
-            if match_anno: datos_retorno['metadata']['anno'] = int(match_anno.group(1))
+        # Usamos flash por velocidad y costo, suficiente para extracción de tablas
+        model = genai.GenerativeModel(
+            model_name="gemini-flash-latest", 
+            generation_config={"response_mime_type": "application/json"}
+        )
 
-            # 2. Extracción de Tablas (Unificación de Páginas)
-            todas_las_filas = []
-            for page in pdf.pages:
-                # 'lines' es fundamental para C70 y C44
-                tablas = page.extract_table(table_settings={"vertical_strategy": "lines", "horizontal_strategy": "lines"})
-                if not tablas: 
-                    tablas = page.extract_table()
-                if tablas: 
-                    todas_las_filas.extend(tablas)
-            
-            if not todas_las_filas:
-                datos_retorno['error'] = "No se encontraron tablas legibles."
-                return datos_retorno
+        # Preparar archivo
+        if hasattr(archivo_memoria, 'read'):
+            if hasattr(archivo_memoria, 'seek'):
+                archivo_memoria.seek(0)
+            pdf_bytes = archivo_memoria.read()
+        else:
+            pdf_bytes = archivo_memoria
 
-            # 3. Mapeo
-            mapa_indices = identificar_indices_columnas(todas_las_filas, datos_retorno['tipo'])
-            if not mapa_indices:
-                 datos_retorno['error'] = "No se identificaron columnas válidas."
-                 return datos_retorno
+        # --- PROMPT CORREGIDO Y ESTRICTO ---
+        prompt = """
+        Actúa como un contador auditor experto. Analiza el Certificado Tributario N° 70 adjunto.
+        Tu misión es extraer SOLO la fila final de "Totales" (suma anual) y mapear las columnas EXACTAS a los factores tributarios definidos abajo.
 
-            # 4. Estrategia de Selección de Datos
-            fila_totales = None
+        ### INSTRUCCIONES DE EXTRACCIÓN:
+
+        1. **METADATA:**
+           - Año Comercial: Busca "por el año comercial YYYY".
+           - RUT Cliente: Busca el RUT del titular del certificado.
+
+        2. **MAPEO DE COLUMNAS (CRÍTICO):**
+           Debes buscar la fila inferior que dice "Totales" (o "Tos" por error de OCR) en cada página y extraer los valores según estos encabezados exactos:
+
+           **PÁGINA 1 (Base Imponible):**
+           - **factor8**: Extrae el valor de la columna titulada "Monto Con crédito por IDPC..." (o similar que indique crédito acumulado desde 2017).
+           - **factor9**: Extrae el valor de la columna "Sin derecho a crédito" (generalmente a la derecha del factor 8). **SI LA CELDA ESTÁ VACÍA O ES CERO, DEVUELVE 0. NO DUPLIQUES EL VALOR DEL FACTOR 8 AQUI.**
+           
+           **PÁGINA 2 (Créditos):**
+           - **factor25**: Busca la columna bajo "No sujetos a restitución" -> subtitulo "Con derecho a devolución".
+           - **factor26**: Busca la columna bajo "Sujetos a restitución" -> subtitulo "Sin derecho a devolución".
+           - **factor27**: Busca la columna bajo "Sujetos a restitución" -> subtitulo "Con derecho a devolución". (En el ejemplo visual, aquí suele haber un monto grande como 19.588.026).
+           
+           **NOTA:** Si una columna no tiene valor en la fila de totales, su valor es 0.
+
+        3. **SALIDA JSON:**
+           Retorna un ÚNICO objeto JSON. Estructura obligatoria:
+
+        {
+            "metadata": { "rut_emisor": "XX.XXX.XXX-X", "anno_comercial": 2023 },
+            "cliente": { "rut": "XX.XXX.XXX-X", "nombre": "NOMBRE", "tipo_persona": "juridica" },
+            "filas": [
+                {
+                    "fecha_pago": "31/12/2023",
+                    "instrumento": "RESUMEN TOTALES ANUAL",
+                    "numero_dividendo": 0,
+                    "factor8": 0.0,
+                    "factor9": 0.0,   // OJO: No copiar F8 aqui
+                    "factor25": 0.0,  // No sujetos a restitución - Con derecho
+                    "factor26": 0.0,  // Sujetos a restitución - Sin derecho
+                    "factor27": 0.0   // Sujetos a restitución - Con derecho
+                }
+            ]
+        }
+        """
+
+        # Lógica de Reintentos
+        max_intentos = 3
+        for intento in range(max_intentos):
+            try:
+                response = model.generate_content([
+                    {"mime_type": "application/pdf", "data": pdf_bytes},
+                    prompt
+                ])
+                
+                print(f"Respuesta IA exitosa (intento {intento+1})")
+                data = json.loads(response.text)
+                break 
+
+            except Exception as e:
+                error_msg = str(e).lower()
+                if ("429" in error_msg or "quota" in error_msg or "503" in error_msg) and intento < max_intentos - 1:
+                    time.sleep(2 * (intento + 1))
+                    continue
+                else:
+                    raise e
+
+        # --- PROCESAMIENTO DE RESPUESTA ---
+        meta = data.get('metadata', {})
+        anno_detectado = meta.get('anno_comercial')
+        if not anno_detectado: anno_detectado = datetime.now().year - 1
+
+        datos_retorno = {
+            'tipo': 'C70',
+            'metadata': {'rut_emisor': meta.get('rut_emisor'), 'anno': int(anno_detectado)},
+            'cliente_detectado': data.get('cliente', {}),
+            'filas': [],
+            'error': None
+        }
+
+        # Procesar filas y limpiar números
+        for f in data.get('filas', []):
+            fecha_final = f.get('fecha_pago')
+            if not fecha_final or str(anno_detectado) not in str(fecha_final):
+                fecha_final = f"31/12/{anno_detectado}"
+
+            fila_clean = {
+                'ingreso_montos': False,
+                'fecha_pago': fecha_final,
+                'instrumento': 'RESUMEN TOTALES ANUAL',
+                'numero_dividendo': 0,
+                'descripcion': 'Carga Masiva IA',
+                'isfut': False 
+            }
             
-            # Buscar fila "Total" (Prioridad para C70)
-            for fila in todas_las_filas:
-                texto_fila = " ".join([str(x).lower() for x in fila if x])
-                if "total" in texto_fila:
-                    fila_totales = fila
-                    break
+            # Mapeo dinámico de factores (F8 a F37)
+            # Inicializamos todos en 0 primero
+            for i in range(8, 38):
+                fila_clean[f'factor{i}'] = Decimal(0)
+
+            # Sobrescribimos con lo que trajo la IA
+            for k, v in f.items():
+                if k.startswith('factor'):
+                    # Extraer el numero del key (ej: "factor8" -> 8)
+                    try:
+                        num_factor = int(re.search(r'\d+', k).group())
+                        if 8 <= num_factor <= 37:
+                            fila_clean[f'factor{num_factor}'] = limpiar_moneda_ai(v)
+                    except:
+                        pass
             
-            if fila_totales and datos_retorno['tipo'] == 'C70':
-                # Si es C70 y tiene totales, usamos solo esa fila
-                datos_fila = extraer_datos_fila(fila_totales, mapa_indices)
-                datos_fila['fecha_pago'] = fecha_emision.strftime("%d/%m/%Y")
-                datos_fila['instrumento'] = "RESUMEN ANUAL CERTIFICADO"
-                datos_retorno['filas'].append(datos_fila)
-            else:
-                # Si no hay totales o es C44 (detalle), procesamos filas de datos
-                for fila in todas_las_filas:
-                    # Validamos si parece una fila de datos (tiene números o fecha)
-                    texto_unido = "".join([str(x) for x in fila if x])
-                    
-                    # Criterio C44: Buscar filas con fechas válidas en la columna mapeada
-                    idx_fecha = mapa_indices.get('fecha_pago')
-                    if idx_fecha is not None and len(fila) > idx_fecha:
-                         val_fecha = str(fila[idx_fecha])
-                         if re.match(r'\d{1,2}/\d{1,2}/\d{4}', val_fecha):
-                             datos_fila = extraer_datos_fila(fila, mapa_indices)
-                             datos_retorno['filas'].append(datos_fila)
-                    
-                    # Fallback C70 sin totales detectados (raro):
-                    elif datos_retorno['tipo'] == 'C70' and len(texto_unido) > 10 and "fecha" not in texto_unido.lower():
-                         datos_fila = extraer_datos_fila(fila, mapa_indices)
-                         if not datos_fila['fecha_pago']:
-                             datos_fila['fecha_pago'] = fecha_emision.strftime("%d/%m/%Y")
-                         datos_retorno['filas'].append(datos_fila)
+            # Corrección manual de seguridad por si la IA falló en la instrucción negativa
+            # Si F9 es exactamente igual a F8 y F8 no es 0, asumimos error de duplicación y limpiamos F9
+            if fila_clean['factor9'] == fila_clean['factor8'] and fila_clean['factor8'] > 0:
+                 fila_clean['factor9'] = Decimal(0)
+
+            datos_retorno['filas'].append(fila_clean)
+            
+        return datos_retorno
 
     except Exception as e:
-        datos_retorno['error'] = f"Error al procesar PDF: {str(e)}"
-
-    return datos_retorno
+        print(f"ERROR CRÍTICO: {e}")
+        return {'error': str(e), 'filas': [], 'cliente_detectado': {}}

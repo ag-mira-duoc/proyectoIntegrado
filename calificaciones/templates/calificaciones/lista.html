@@ -5,6 +5,7 @@
 
 {% block extra_css %}
 <style>
+    /* Estilos Tabla Principal */
     .table-responsive {
         overflow-x: auto;
         max-height: 65vh;
@@ -16,8 +17,9 @@
         cursor: pointer;
     }
     
-    .col-fixed-1 { position: sticky; left: 0; background-color: #fff; z-index: 2; width: 60px; }
-    .col-fixed-2 { position: sticky; left: 60px; background-color: #fff; z-index: 2; width: 120px; }
+    /* Columnas fijas (Sticky) */
+    .col-fixed-1 { position: sticky; left: 0; background-color: #fff; z-index: 2; width: 60px; border-right: 1px solid #dee2e6; }
+    .col-fixed-2 { position: sticky; left: 60px; background-color: #fff; z-index: 2; width: 120px; border-right: 2px solid #dee2e6; }
     
     .table-hover tbody tr:hover td.col-fixed-1,
     .table-hover tbody tr:hover td.col-fixed-2 {
@@ -55,6 +57,7 @@
         min-height: 30px; 
     }
 
+    /* Barra Inferior */
     .bottom-toolbar {
         background-color: #e9ecef;
         border-top: 1px solid #dee2e6;
@@ -192,7 +195,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="40" class="text-center py-4 text-muted">No se encontraron registros.</td>
+                        <td colspan="45" class="text-center py-4 text-muted">No se encontraron registros.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -417,8 +420,7 @@
 </div>
 
 <div class="modal fade" id="modalPrevisualizacion" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 95vw;"> <div class="modal-content">
             <div class="modal-header bg-success text-white">
                 <h5 class="modal-title"><i class="bi bi-robot"></i> Confirmación Automática</h5>
                 <a href="{% url 'calificaciones:listado' %}" class="btn-close btn-close-white"></a>
@@ -459,22 +461,49 @@
                     </div>
 
                     <h6 class="text-muted border-bottom pb-2">Registros a Ingresar ({{ preview_data.filas|length }})</h6>
-                    <div class="table-responsive" style="max-height: 350px;">
-                        <table class="table table-sm table-bordered small table-striped">
+                    <div class="table-responsive" style="max-height: 500px;"> 
+                        <table class="table table-sm table-bordered small table-striped text-nowrap">
                             <thead class="table-dark position-sticky top-0">
                                 <tr>
-                                    <th>Fecha</th><th>Instrumento</th><th>F-8</th><th>F-9</th><th>F-10</th><th>ISFUT</th>
+                                    <th title="Posición 0">Ejercicio</th>
+                                    <th title="Posición 1">Mercado</th>
+                                    <th title="Posición 2">Nemo</th>
+                                    <th title="Posición 3">Fec. Pago</th>
+                                    <th title="Posición 4">Sec. Eve</th>
+                                    <th title="Posición 5" style="min-width: 150px;">Descripción</th>
+                                    
+                                    <th>F-8</th><th>F-9</th><th>F-10</th><th>F-11</th><th>F-12</th><th>F-13</th>
+                                    <th>F-14</th><th>F-15</th><th>F-16</th><th>F-17</th><th>F-18</th><th>F-19</th>
+                                    <th>F-20</th><th>F-21</th><th>F-22</th><th>F-23</th><th>F-24</th><th>F-25</th>
+                                    <th>F-26</th><th>F-27</th><th>F-28</th><th>F-29</th><th>F-30</th><th>F-31</th>
+                                    <th>F-32</th><th>F-33</th><th>F-34</th><th>F-35</th><th>F-36</th><th>F-37</th>
+                                    
+                                    <th class="bg-secondary">ISFUT</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for fila in preview_data.filas %}
                                 <tr>
-                                    <td>{{ fila.fecha_pago }}</td>
-                                    <td>{{ fila.instrumento }}</td>
-                                    <td>{{ fila.factor8 }}</td>
-                                    <td>{{ fila.factor9 }}</td>
-                                    <td>{{ fila.factor10 }}</td>
-                                    <td class="text-center">{{ fila.isfut|yesno:"SI,NO" }}</td>
+                                    <td>{{ fila.anno }}</td>
+                                    <td>{{ fila.mercado }}</td>
+                                    <td class="fw-bold">{{ fila.instrumento }}</td> <td>{{ fila.fecha_pago }}</td>
+                                    <td>{{ fila.secuencia_evento|default:"-" }}</td>
+                                    <td class="text-truncate" style="max-width: 150px;" title="{{ fila.descripcion }}">
+                                        {{ fila.descripcion|default:"-" }}
+                                    </td>
+
+                                    <td class="text-end">{{ fila.factor8 }}</td><td class="text-end">{{ fila.factor9 }}</td><td class="text-end">{{ fila.factor10 }}</td>
+                                    <td class="text-end">{{ fila.factor11 }}</td><td class="text-end">{{ fila.factor12 }}</td><td class="text-end">{{ fila.factor13 }}</td>
+                                    <td class="text-end">{{ fila.factor14 }}</td><td class="text-end">{{ fila.factor15 }}</td><td class="text-end">{{ fila.factor16 }}</td>
+                                    <td class="text-end">{{ fila.factor17 }}</td><td class="text-end">{{ fila.factor18 }}</td><td class="text-end">{{ fila.factor19 }}</td>
+                                    <td class="text-end">{{ fila.factor20 }}</td><td class="text-end">{{ fila.factor21 }}</td><td class="text-end">{{ fila.factor22 }}</td>
+                                    <td class="text-end">{{ fila.factor23 }}</td><td class="text-end">{{ fila.factor24 }}</td><td class="text-end">{{ fila.factor25 }}</td>
+                                    <td class="text-end">{{ fila.factor26 }}</td><td class="text-end">{{ fila.factor27 }}</td><td class="text-end">{{ fila.factor28 }}</td>
+                                    <td class="text-end">{{ fila.factor29 }}</td><td class="text-end">{{ fila.factor30 }}</td><td class="text-end">{{ fila.factor31 }}</td>
+                                    <td class="text-end">{{ fila.factor32 }}</td><td class="text-end">{{ fila.factor33 }}</td><td class="text-end">{{ fila.factor34 }}</td>
+                                    <td class="text-end">{{ fila.factor35 }}</td><td class="text-end">{{ fila.factor36 }}</td><td class="text-end">{{ fila.factor37 }}</td>
+                                    
+                                    <td class="text-center bg-light fw-bold">{{ fila.isfut|yesno:"SI,NO" }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
