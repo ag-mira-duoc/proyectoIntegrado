@@ -30,6 +30,38 @@ def limpiar_moneda_ai(valor):
     except:
         return Decimal(0)
 
+def normalizar_a_decimal(valor):
+    """
+    CORRECCIÓN DE DESBORDAMIENTO:
+    Si el valor es > 99 (limite de la BD numeric(10,8)), lo divide
+    para convertirlo en un coeficiente decimal (0.XXXX).
+    Ej: 52960217.0 -> 0.52960217
+    """
+    try:
+        if not valor: 
+            return Decimal(0)
+            
+        # Aseguramos que trabajamos con Decimal
+        valor_dec = Decimal(str(valor))
+        
+        # Si el valor ya es aceptable (menor a 100), lo devolvemos tal cual
+        # Usamos 90 por seguridad, aunque el límite teórico es 99.
+        if abs(valor_dec) < 90:
+            return valor_dec
+
+        # Convertimos a string la parte entera para contar cuántos dígitos tiene
+        parte_entera = int(abs(valor_dec))
+        digitos = len(str(parte_entera))
+        
+        # Dividimos por 10 elevado a la cantidad de dígitos
+        divisor = Decimal('10') ** digitos
+        valor_corregido = valor_dec / divisor
+        
+        return valor_corregido
+        
+    except (ValueError, TypeError, Exception):
+        return Decimal(0)
+
 def procesar_archivo_pdf(archivo_memoria):
     """
     Procesa el PDF usando el modelo 'gemini-1.5-flash' con instrucciones 
@@ -159,7 +191,12 @@ def procesar_archivo_pdf(archivo_memoria):
                     try:
                         num_factor = int(re.search(r'\d+', k).group())
                         if 8 <= num_factor <= 37:
-                            fila_clean[f'factor{num_factor}'] = limpiar_moneda_ai(v)
+                            # 1. Limpiamos símbolos y comas
+                            val_limpio = limpiar_moneda_ai(v)
+                            # 2. APLICAMOS CORRECCIÓN DE DESBORDAMIENTO (NORMALIZAR)
+                            val_final = normalizar_a_decimal(val_limpio)
+                            
+                            fila_clean[f'factor{num_factor}'] = val_final
                     except:
                         pass
             
