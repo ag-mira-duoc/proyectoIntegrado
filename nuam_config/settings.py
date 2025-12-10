@@ -543,6 +543,14 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage' 
 
+LOGIN_URL = 'login'
+
+# Opcional: A dónde ir después de loguearse exitosamente
+LOGIN_REDIRECT_URL = 'dashboard'  # O 'home', según prefieras
+
+# Opcional: A dónde ir después de cerrar sesión
+LOGOUT_REDIRECT_URL = 'login'
+
 # ==============================================================================
 # VARIABLES DE ENTORNO REQUERIDAS PARA RENDER
 # ==============================================================================

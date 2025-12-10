@@ -317,7 +317,7 @@ def guardar_lote_ajax(request):
                     secuencia_evento=item.get('secuencia'),
                     
                     isfut=(item.get('acogidoISFUT') == 'S'),
-                    origen=item.get('origen'),
+                    #origen=item.get('origen'),
                     estado='BORRADOR' # Siempre entran como borrador para revisión final
                 )
                 

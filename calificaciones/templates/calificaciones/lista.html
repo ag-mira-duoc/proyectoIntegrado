@@ -474,7 +474,7 @@
                 </div>
             
                 <div id="footer-right-actions">
-                    
+
                     <div id="botones-vista-lista" class="d-flex gap-2">
                         <button type="button" class="btn btn-primary" onclick="grabarTodo()">Grabar</button>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -491,7 +491,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <form style="display:none;">{% csrf_token %}</form>
             </div>
                 
@@ -728,10 +728,14 @@
             f16 = parseFloat(datosTemporales.factores[16]?.valor_decimal || 0);
         }
         let acogidoISFUT = (f15 !== 0 || f16 !== 0) ? 'S' : 'N';
-        let origen = 'Usuario'; 
         
+        // --- CAMBIO AQUÍ ---
+        // Usamos comillas para que sea un string de JS, pero adentro ponemos el tag de Django
+        let origen = "{{ user.get_full_name|default:user.email }}";
+        // -------------------
+
         datosTemporales.acogidoISFUT = acogidoISFUT;
-        datosTemporales.origen = origen;
+        datosTemporales.origen = origen; // Esto es solo para mostrarlo en la tabla visualmente
 
         listaParaGrabar.push(datosTemporales);
         renderizarTablaPrincipal();
