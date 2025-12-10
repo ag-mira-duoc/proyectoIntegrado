@@ -29,5 +29,5 @@ RUN python manage.py collectstatic --noinput
 
 # 8. COMANDO DE INICIO (ACTUALIZADO)
 # Orden de ejecución: 
-# 1. Migraciones -> 2. Crear Superusuario -> 3. Iniciar Gunicorn
-CMD sh -c "python manage.py migrate && python crear_admin.py && gunicorn nuam_config.wsgi:application --bind 0.0.0.0:$PORT"
+# 1. Migraciones -> 2. Crear Superusuario -> 3. Iniciar Gunicorn con timeout aumentado
+CMD sh -c "python manage.py migrate && python crear_admin.py && gunicorn nuam_config.wsgi:application --bind 0.0.0.0:$PORT --timeout 200"
