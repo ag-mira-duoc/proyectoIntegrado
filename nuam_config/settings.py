@@ -22,7 +22,7 @@ import dj_database_url
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-DOCLING_API_URL = "http://localhost:8000/convert"
+DOCLING_API_URL = os.environ.get('DOCLING_API_URL', 'http://localhost:8000/convert')
 
 # ==============================================================================
 # CONFIGURACIÓN DE SEGURIDAD
