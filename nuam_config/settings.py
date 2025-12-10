@@ -22,6 +22,7 @@ import dj_database_url
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+DOCLING_API_URL = "http://localhost:8000/convert"
 
 # ==============================================================================
 # CONFIGURACIÓN DE SEGURIDAD
@@ -309,11 +310,13 @@ CORS_ALLOW_CREDENTIALS = True
 # ==============================================================================
 # NOTA: Comentado temporalmente - descomentar cuando agregues Redis/Upstash
 
-# CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
-# CELERY_RESULT_BACKEND = 'django-db'  # Almacenar resultados en PostgreSQL
+CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
+# CELERY_RESULT_BACKEND = 'django-db'
 # CELERY_CACHE_BACKEND = 'default'
-# CELERY_ACCEPT_CONTENT = ['json']
-# CELERY_TASK_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True
 # CELERY_RESULT_SERIALIZER = 'json'
 # CELERY_TIMEZONE = TIME_ZONE
 # CELERY_TASK_TRACK_STARTED = True

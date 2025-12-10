@@ -15,8 +15,8 @@ urlpatterns = [
     
     # Nuevos Módulos (Requeridos por Dashboard)
     path('ingreso-monto/', views.ingreso_por_monto, name='ingreso_monto'),
-    path('carga-masiva/', views.carga_masiva_factores, name='carga_masiva'),
-    path('carga-masiva/confirmar/', views.confirmar_carga, name='confirmar_carga'),
+    path('api/extraer-pdf/', views.procesar_pdf_ajax, name='api_extraer_pdf'),
+    path('api/guardar-lote/', views.guardar_lote_ajax, name='api_guardar_lote'),
     
     # Reportes
     path('reporte-agentes/', views.reporte_calificaciones_por_agente, name='reporte_agentes'),

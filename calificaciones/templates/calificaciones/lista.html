@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <style>
-    /* Estilos Tabla Principal */
+    /* --- ESTILOS TABLA PRINCIPAL --- */
     .table-responsive {
         overflow-x: auto;
         max-height: 65vh;
@@ -17,7 +17,29 @@
         cursor: pointer;
     }
     
-    /* Columnas fijas (Sticky) */
+    /* --- ESTILOS PARA REDIMENSIONAR COLUMNAS --- */
+    .table-resizable th {
+        position: relative;
+        cursor: col-resize;
+        user-select: none;
+    }
+    
+    .resizer {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 5px;
+        cursor: col-resize;
+        user-select: none;
+        height: 100%;
+    }
+    
+    .resizer:hover, 
+    .resizing {
+        border-right: 2px solid #0d6efd;
+    }
+
+    /* --- Columnas fijas (Sticky) --- */
     .col-fixed-1 { position: sticky; left: 0; background-color: #fff; z-index: 2; width: 60px; border-right: 1px solid #dee2e6; }
     .col-fixed-2 { position: sticky; left: 60px; background-color: #fff; z-index: 2; width: 120px; border-right: 2px solid #dee2e6; }
     
@@ -31,7 +53,7 @@
         border-color: #0d6efd;
     }
 
-    /* Estilos para el resumen dentro del modal */
+    /* --- Estilos Modal Manual --- */
     .resumen-container { 
         background-color: #f8f9fa; 
         border: 1px solid #dee2e6; 
@@ -57,7 +79,7 @@
         min-height: 30px; 
     }
 
-    /* Barra Inferior */
+    /* --- Barra Inferior --- */
     .bottom-toolbar {
         background-color: #e9ecef;
         border-top: 1px solid #dee2e6;
@@ -144,7 +166,7 @@
 <div class="card shadow-sm mb-5 pb-5">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover table-bordered mb-0" id="tablaCalificaciones">
+            <table class="table table-hover table-bordered mb-0 table-resizable" id="tablaCalificaciones">
                 <thead class="table-light">
                     <tr>
                         <th class="col-fixed-1 text-center">Ejercicio</th>
@@ -210,7 +232,7 @@
                 {% if page_obj.has_previous %}
                 <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
                 {% endif %}
-                <li class="page-item disabled"><span class="page-link">Pág {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+                <li class="page-item disabled"><span class="page-link">Pag {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
                 {% if page_obj.has_next %}
                 <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
                 {% endif %}
@@ -252,7 +274,7 @@
     <div class="modal-dialog modal-xl modal-dialog-centered"> 
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="modalLabel">Ingresar Calificación Tributaria</h5>
+                <h5 class="modal-title" id="modalLabel">Ingresar Calificacion Tributaria</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             
@@ -285,7 +307,7 @@
                                 <input type="text" name="instrumento" class="form-control" maxlength="50" required>
                             </div>
                             <div class="col-12">
-                                <label class="form-label">Descripción</label>
+                                <label class="form-label">Descripcion</label>
                                 <input type="text" name="descripcion" class="form-control" maxlength="255">
                             </div>
                             <div class="col-md-4">
@@ -301,11 +323,11 @@
                                 <input type="number" step="0.01" name="dividendo" class="form-control" value="0.00">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Valor Histórico</label>
+                                <label class="form-label">Valor Historico</label>
                                 <input type="number" step="0.00000001" name="valor_historico" class="form-control" value="0.00">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Factor Actualización</label>
+                                <label class="form-label">Factor Actualizacion</label>
                                 <input type="number" step="0.000001" name="factor_actualizacion" class="form-control">
                             </div>
                             <div class="col-md-4">
@@ -331,10 +353,10 @@
                             <div class="row g-2">
                                 <div class="col-md-4"><div class="resumen-label">Mercado</div><div class="resumen-value" id="res_mercado"></div></div>
                                 <div class="col-md-8"><div class="resumen-label">Instrumento</div><div class="resumen-value" id="res_instrumento"></div></div>
-                                <div class="col-md-4"><div class="resumen-label">Valor Histórico</div><div class="resumen-value" id="res_valor_historico"></div></div>
+                                <div class="col-md-4"><div class="resumen-label">Valor Historico</div><div class="resumen-value" id="res_valor_historico"></div></div>
                                 <div class="col-md-4"><div class="resumen-label">Fecha Pago</div><div class="resumen-value" id="res_fecha"></div></div>
                                 <div class="col-md-4"><div class="resumen-label">Evento Capital</div><div class="resumen-value">0</div></div>
-                                <div class="col-md-12"><div class="resumen-label">Descripción</div><div class="resumen-value" id="res_descripcion"></div></div>
+                                <div class="col-md-12"><div class="resumen-label">Descripcion</div><div class="resumen-value" id="res_descripcion"></div></div>
                                 <div class="col-md-4"><div class="resumen-label">Secuencia Evento</div><div class="resumen-value" id="res_secuencia"></div></div>
                                 <div class="col-md-4"><div class="resumen-label">Año</div><div class="resumen-value" id="res_anno"></div></div>
                                 
@@ -350,36 +372,17 @@
                         <h6 class="text-muted border-bottom pb-2 mb-3">Factores Tributarios</h6>
                         <div style="max-height: 300px; overflow-y: auto; padding: 10px; border: 1px solid #dee2e6; border-radius: 5px;">
                             <div class="row g-2">
-                                <div class="col-md-4"><label class="small fw-bold">Factor 08</label><input type="number" step="0.00000001" name="factor8" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 09</label><input type="number" step="0.00000001" name="factor9" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 10</label><input type="number" step="0.00000001" name="factor10" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 11</label><input type="number" step="0.00000001" name="factor11" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 12</label><input type="number" step="0.00000001" name="factor12" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 13</label><input type="number" step="0.00000001" name="factor13" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 14</label><input type="number" step="0.00000001" name="factor14" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 15</label><input type="number" step="0.00000001" name="factor15" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 16</label><input type="number" step="0.00000001" name="factor16" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 17</label><input type="number" step="0.00000001" name="factor17" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 18</label><input type="number" step="0.00000001" name="factor18" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 19</label><input type="number" step="0.00000001" name="factor19" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 20</label><input type="number" step="0.00000001" name="factor20" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 21</label><input type="number" step="0.00000001" name="factor21" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 22</label><input type="number" step="0.00000001" name="factor22" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 23</label><input type="number" step="0.00000001" name="factor23" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 24</label><input type="number" step="0.00000001" name="factor24" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 25</label><input type="number" step="0.00000001" name="factor25" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 26</label><input type="number" step="0.00000001" name="factor26" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 27</label><input type="number" step="0.00000001" name="factor27" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 28</label><input type="number" step="0.00000001" name="factor28" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 29</label><input type="number" step="0.00000001" name="factor29" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 30</label><input type="number" step="0.00000001" name="factor30" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 31</label><input type="number" step="0.00000001" name="factor31" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 32</label><input type="number" step="0.00000001" name="factor32" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 33</label><input type="number" step="0.00000001" name="factor33" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 34</label><input type="number" step="0.00000001" name="factor34" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 35</label><input type="number" step="0.00000001" name="factor35" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 36</label><input type="number" step="0.00000001" name="factor36" class="form-control form-control-sm"></div>
-                                <div class="col-md-4"><label class="small fw-bold">Factor 37</label><input type="number" step="0.00000001" name="factor37" class="form-control form-control-sm"></div>
+                                <script>
+                                    // Generacion rapida de campos F8-F37 para el modal manual
+                                    for(let i=8; i<=37; i++){
+                                        document.write(`
+                                            <div class="col-md-4">
+                                                <label class="small fw-bold">Factor ${i}</label>
+                                                <input type="number" step="0.00000001" name="factor${i}" class="form-control form-control-sm">
+                                            </div>
+                                        `);
+                                    }
+                                </script>
                             </div>
                         </div>
                     </div>
@@ -395,144 +398,441 @@
     </div>
 </div>
 
-<div class="modal fade" id="modalCargaMasiva" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered"> 
+<div class="modal fade" id="modalCargaMasiva" tabindex="-1" aria-labelledby="modalCargaMasivaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title"><i class="bi bi-cloud-upload"></i> Carga Masiva (Paso 1)</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form action="{% url 'calificaciones:carga_masiva' %}" method="post" enctype="multipart/form-data">
-                {% csrf_token %}
-                <div class="modal-body">
-                    <p class="text-muted small">El sistema detectará el cliente automáticamente desde el PDF.</p>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Archivo PDF (Certificado 70 o 44)</label>
-                        <input type="file" name="archivo_pdf" class="form-control" accept=".pdf" required>
-                    </div>
-                </div>
-                <div class="modal-footer bg-light">
-                    <button type="submit" class="btn btn-success">Procesar y Previsualizar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="modalPrevisualizacion" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 95vw;"> <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="bi bi-robot"></i> Confirmación Automática</h5>
-                <a href="{% url 'calificaciones:listado' %}" class="btn-close btn-close-white"></a>
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalCargaMasivaLabel">Carga Masiva de Factores</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             
-            <form action="{% url 'calificaciones:confirmar_carga' %}" method="post">
-                {% csrf_token %}
-                <div class="modal-body">
-                    
-                    <div class="card mb-3 border-secondary">
-                        <div class="card-header bg-light fw-bold">
-                            <i class="bi bi-person-badge"></i> Datos del Cliente Detectado
-                        </div>
-                        <div class="card-body">
-                            <div class="row g-3">
-                                <div class="col-md-4">
-                                    <label class="small text-muted">RUT</label>
-                                    <input type="text" class="form-control fw-bold" value="{{ preview_data.cliente.rut }}" readonly>
-                                </div>
-                                <div class="col-md-5">
-                                    <label class="small text-muted">Nombre / Razón Social</label>
-                                    <input type="text" class="form-control fw-bold" value="{{ preview_data.cliente.nombre }}" readonly>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="small text-muted">Estado en Sistema</label>
-                                    {% if preview_data.cliente_existe %}
-                                        <div class="alert alert-success py-1 px-2 mb-0 text-center small fw-bold">
-                                            <i class="bi bi-check-circle"></i> EXISTE
-                                        </div>
-                                    {% else %}
-                                        <div class="alert alert-warning py-1 px-2 mb-0 text-center small fw-bold">
-                                            <i class="bi bi-plus-circle"></i> SE CREARÁ ({{ preview_data.cliente.tipo_persona|upper }})
-                                        </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
+            <div class="modal-body">
+                
+                <div id="loading-message" style="display: none;" class="text-center py-5">
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Cargando...</span>
                     </div>
+                    <h5 class="text-primary fw-bold">Procesando Archivo...</h5>
+                    <p class="text-muted small">Esto puede tomar unos segundos mientras la IA analiza el documento.</p>
+                </div>
 
-                    <h6 class="text-muted border-bottom pb-2">Registros a Ingresar ({{ preview_data.filas|length }})</h6>
-                    <div class="table-responsive" style="max-height: 500px;"> 
-                        <table class="table table-sm table-bordered small table-striped text-nowrap">
-                            <thead class="table-dark position-sticky top-0">
+                <div id="contenedor-lista-carga">
+                    <p class="text-muted">Archivos procesados listos para grabar:</p>
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-bordered table-hover table-sm table-resizable" id="tabla-carga-masiva">
+                            <thead class="table-light sticky-top">
                                 <tr>
-                                    <th title="Posición 0">Ejercicio</th>
-                                    <th title="Posición 1">Mercado</th>
-                                    <th title="Posición 2">Nemo</th>
-                                    <th title="Posición 3">Fec. Pago</th>
-                                    <th title="Posición 4">Sec. Eve</th>
-                                    <th title="Posición 5" style="min-width: 150px;">Descripción</th>
-                                    
-                                    <th>F-8</th><th>F-9</th><th>F-10</th><th>F-11</th><th>F-12</th><th>F-13</th>
-                                    <th>F-14</th><th>F-15</th><th>F-16</th><th>F-17</th><th>F-18</th><th>F-19</th>
-                                    <th>F-20</th><th>F-21</th><th>F-22</th><th>F-23</th><th>F-24</th><th>F-25</th>
-                                    <th>F-26</th><th>F-27</th><th>F-28</th><th>F-29</th><th>F-30</th><th>F-31</th>
-                                    <th>F-32</th><th>F-33</th><th>F-34</th><th>F-35</th><th>F-36</th><th>F-37</th>
-                                    
-                                    <th class="bg-secondary">ISFUT</th>
-                                </tr>
+                                    <th style="min-width: 100px;">Ejercicio</th> 
+                                    <th>Mercado</th>
+                                    <th>Fecha Pago</th>
+                                    <th>Secuencia</th>
+                                    <th>Descripción</th>
+                                    <script>
+                                        for(let i=8; i<=37; i++) {
+                                            document.write(`<th style="min-width: 80px;">F-${i}</th>`);
+                                        }
+                                    </script>
+                                    <th>Acogido ISFUT</th>
+                                    <th>Origen</th>
+                                    </tr>
                             </thead>
-                            <tbody>
-                                {% for fila in preview_data.filas %}
-                                <tr>
-                                    <td>{{ fila.anno }}</td>
-                                    <td>{{ fila.mercado }}</td>
-                                    <td class="fw-bold">{{ fila.instrumento }}</td> <td>{{ fila.fecha_pago }}</td>
-                                    <td>{{ fila.secuencia_evento|default:"-" }}</td>
-                                    <td class="text-truncate" style="max-width: 150px;" title="{{ fila.descripcion }}">
-                                        {{ fila.descripcion|default:"-" }}
-                                    </td>
-
-                                    <td class="text-end">{{ fila.factor8 }}</td><td class="text-end">{{ fila.factor9 }}</td><td class="text-end">{{ fila.factor10 }}</td>
-                                    <td class="text-end">{{ fila.factor11 }}</td><td class="text-end">{{ fila.factor12 }}</td><td class="text-end">{{ fila.factor13 }}</td>
-                                    <td class="text-end">{{ fila.factor14 }}</td><td class="text-end">{{ fila.factor15 }}</td><td class="text-end">{{ fila.factor16 }}</td>
-                                    <td class="text-end">{{ fila.factor17 }}</td><td class="text-end">{{ fila.factor18 }}</td><td class="text-end">{{ fila.factor19 }}</td>
-                                    <td class="text-end">{{ fila.factor20 }}</td><td class="text-end">{{ fila.factor21 }}</td><td class="text-end">{{ fila.factor22 }}</td>
-                                    <td class="text-end">{{ fila.factor23 }}</td><td class="text-end">{{ fila.factor24 }}</td><td class="text-end">{{ fila.factor25 }}</td>
-                                    <td class="text-end">{{ fila.factor26 }}</td><td class="text-end">{{ fila.factor27 }}</td><td class="text-end">{{ fila.factor28 }}</td>
-                                    <td class="text-end">{{ fila.factor29 }}</td><td class="text-end">{{ fila.factor30 }}</td><td class="text-end">{{ fila.factor31 }}</td>
-                                    <td class="text-end">{{ fila.factor32 }}</td><td class="text-end">{{ fila.factor33 }}</td><td class="text-end">{{ fila.factor34 }}</td>
-                                    <td class="text-end">{{ fila.factor35 }}</td><td class="text-end">{{ fila.factor36 }}</td><td class="text-end">{{ fila.factor37 }}</td>
-                                    
-                                    <td class="text-center bg-light fw-bold">{{ fila.isfut|yesno:"SI,NO" }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
+                            <tbody id="tbody-carga-masiva">
+                                </tbody>
                         </table>
                     </div>
                 </div>
-                <div class="modal-footer bg-light">
-                    <a href="{% url 'calificaciones:listado' %}" class="btn btn-secondary">Cancelar</a>
-                    <button type="submit" class="btn btn-success fw-bold">
-                        <i class="bi bi-check-lg"></i> CONFIRMAR TODO
-                    </button>
+
+                <div id="contenedor-previsualizacion" style="display: none;">
+                    <h6 class="border-bottom pb-2 mb-3">Previsualización de extracción de datos</h6>
+                    
+                    <div class="card bg-light mb-3">
+                        <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40%;">Campo</th>
+                                        <th style="width: 60%;">Dato Extraído</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-previsualizacion">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-            </form>
+
+            </div>
+
+            <div class="modal-footer justify-content-between">
+    
+                <div id="footer-left-actions">
+                    <input type="file" id="inputArchivoPDF" accept=".pdf" style="display: none;">
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('inputArchivoPDF').click()">
+                        Seleccionar Archivo
+                    </button>
+                    <span id="nombre-archivo-seleccionado" class="ms-2 text-muted"></span>
+                </div>
+            
+                <div id="footer-right-actions">
+                    
+                    <div id="botones-vista-lista" class="d-flex gap-2">
+                        <button type="button" class="btn btn-primary" onclick="grabarTodo()">Grabar</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-outline-dark" id="btnVerFormatoMasiva" onclick="accionVerFormatoMasiva()" disabled>Ver Formato</button>
+                    </div>
+                
+                    <div id="botones-vista-preview" style="display: none;">
+                        <div id="controles-nuevo-archivo">
+                            <button type="button" class="btn btn-secondary" onclick="cancelarPrevisualizacion()">Cancelar</button>
+                            <button type="button" class="btn btn-primary" onclick="aceptarCarga()">Aceptar</button>
+                        </div>
+                        <div id="controles-revision-archivo" style="display: none;">
+                            <button type="button" class="btn btn-primary" onclick="volverALista()">Volver al listado</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <form style="display:none;">{% csrf_token %}</form>
+            </div>
+                
+                <form style="display:none;">{% csrf_token %}</form>
+            </div>
         </div>
     </div>
 </div>
 
-{% if modal_open %}
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        var myModal = new bootstrap.Modal(document.getElementById('{{ modal_open }}'));
-        myModal.show();
-    });
-</script>
-{% endif %}
 {% endblock %}
 
 {% block extra_js %}
 <script>
+    // --- 1. SCRIPT DE REDIMENSIONAMIENTO DE COLUMNAS ---
+    document.addEventListener('DOMContentLoaded', function() {
+        initResizableTables();
+        const observer = new MutationObserver(function(mutations) {
+            initResizableTables();
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    });
+
+    function initResizableTables() {
+        const tables = document.querySelectorAll('.table-resizable');
+        tables.forEach(table => {
+            const cols = table.querySelectorAll('th');
+            cols.forEach(col => {
+                if (col.querySelector('.resizer')) return;
+                const resizer = document.createElement('div');
+                resizer.classList.add('resizer');
+                resizer.style.height = `${table.offsetHeight}px`; 
+                col.appendChild(resizer);
+                createResizableColumn(col, resizer);
+            });
+        });
+    }
+
+    function createResizableColumn(col, resizer) {
+        let x = 0; let w = 0;
+        const mouseDownHandler = function(e) {
+            x = e.clientX;
+            const styles = window.getComputedStyle(col);
+            w = parseInt(styles.width, 10);
+            document.addEventListener('mousemove', mouseMoveHandler);
+            document.addEventListener('mouseup', mouseUpHandler);
+            resizer.classList.add('resizing');
+        };
+        const mouseMoveHandler = function(e) {
+            const dx = e.clientX - x;
+            col.style.width = `${w + dx}px`;
+        };
+        const mouseUpHandler = function() {
+            document.removeEventListener('mousemove', mouseMoveHandler);
+            document.removeEventListener('mouseup', mouseUpHandler);
+            resizer.classList.remove('resizing');
+        };
+        resizer.addEventListener('mousedown', mouseDownHandler);
+    }
+
+    // --- 2. JS MANTENEDOR PRINCIPAL ---
+    let selectedId = null;
+
+    function seleccionarFila(fila) {
+        document.querySelectorAll('#tablaCalificaciones tr.selected-row').forEach(tr => {
+            tr.classList.remove('selected-row');
+        });
+        fila.classList.add('selected-row');
+        selectedId = fila.getAttribute('data-id');
+        document.getElementById('btnModificar').disabled = false;
+        document.getElementById('btnEliminar').disabled = false;
+    }
+
+    function accionModificar() {
+        if (selectedId) window.location.href = `/calificaciones/${selectedId}/editar/`;
+    }
+
+    function accionEliminar() {
+        if (selectedId && confirm('¿Esta seguro de eliminar esta calificacion?')) {
+            window.location.href = `/calificaciones/${selectedId}/eliminar/`;
+        }
+    }
+
+    // --- 3. JS DEL MODAL CARGA MASIVA (AJAX) ---
+    let datosTemporales = {}; 
+    let listaParaGrabar = [];
+    let selectedIndexMasiva = null; 
+
+    document.getElementById('inputArchivoPDF').addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            let file = e.target.files[0];
+            document.getElementById('nombre-archivo-seleccionado').innerText = file.name;
+            procesarArchivo(file);
+        }
+    });
+
+    // --- NUEVA FUNCION ROBUSTA PARA CONTROLAR VISIBILIDAD ---
+    function actualizarEstadoModal(estado) {
+        // Contenedores Principales
+        const loadingDiv = document.getElementById('loading-message');
+        const listaDiv = document.getElementById('contenedor-lista-carga');
+        const previewDiv = document.getElementById('contenedor-previsualizacion');
+
+        // Secciones del Footer
+        const footerLeft = document.getElementById('footer-left-actions');
+        const footerRightList = document.getElementById('botones-vista-lista');
+        const footerRightPreview = document.getElementById('botones-vista-preview');
+
+        // Sub-controles de Preview
+        const ctrlsNuevo = document.getElementById('controles-nuevo-archivo');
+        const ctrlsRevision = document.getElementById('controles-revision-archivo');
+
+        // 1. Ocultar todo por defecto (Reset agresivo)
+        loadingDiv.style.display = 'none';
+        listaDiv.style.display = 'none';
+        previewDiv.style.display = 'none';
+        
+        footerLeft.style.display = 'none';
+        
+        // AQUÍ ESTÁ EL CAMBIO CLAVE:
+        // Para ocultar elementos con d-flex, debemos quitar la clase d-flex y poner d-none
+        footerRightList.classList.remove('d-flex');
+        footerRightList.classList.add('d-none');
+        
+        footerRightPreview.style.display = 'none';
+        
+        ctrlsNuevo.style.display = 'none';
+        ctrlsRevision.style.display = 'none';
+
+        // 2. Activar segun estado
+        if (estado === 'cargando') {
+            // SOLO mensaje de carga. NINGUN boton visible.
+            loadingDiv.style.display = 'block';
+        } 
+        else if (estado === 'lista') {
+            // Ver Lista + Boton Seleccionar Archivo + Botones Grabar/Cancelar/Ver
+            listaDiv.style.display = 'block';
+            footerLeft.style.display = 'block';
+            
+            // Restaurar d-flex para que se vean los botones alineados
+            footerRightList.classList.remove('d-none');
+            footerRightList.classList.add('d-flex');
+        } 
+        else if (estado === 'preview_nuevo') {
+            // Ver Preview + Botones Aceptar/Cancelar
+            previewDiv.style.display = 'block';
+            footerRightPreview.style.display = 'block';
+            ctrlsNuevo.style.display = 'block';
+        } 
+        else if (estado === 'preview_revision') {
+            // Ver Preview + Boton Volver
+            previewDiv.style.display = 'block';
+            footerRightPreview.style.display = 'block';
+            ctrlsRevision.style.display = 'block';
+        }
+    }
+
+    function procesarArchivo(file) {
+        // 1. UI: Estado Cargando (Sin botones)
+        actualizarEstadoModal('cargando');
+        
+        console.log("Subiendo archivo al backend...");
+        
+        let formData = new FormData();
+        formData.append('archivo_pdf', file);
+        
+        let tokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
+        const csrftoken = tokenInput ? tokenInput.value : '';
+
+        fetch('/calificaciones/api/extraer-pdf/', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-CSRFToken': csrftoken }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.error) {
+                alert("Error del sistema: " + data.error);
+                actualizarEstadoModal('lista');
+            } else {
+                mostrarPrevisualizacion(data, false);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("Error de conexión con el servidor.");
+            actualizarEstadoModal('lista');
+        });
+    }
+
+    function mostrarPrevisualizacion(datos, esRevision) {
+        datosTemporales = datos; 
+        const tbody = document.getElementById('tbody-previsualizacion');
+        tbody.innerHTML = '';
+
+        const addRow = (campo, dato) => {
+            tbody.innerHTML += `<tr><td><strong>${campo}</strong></td><td>${dato || '-'}</td></tr>`;
+        };
+
+        addRow('Ejercicio', datos.ejercicio);
+        addRow('Mercado', datos.mercado);
+        addRow('Instrumento', datos.instrumento);
+        addRow('Fecha Pago', datos.fecha_pago);
+        addRow('Secuencia Evento', datos.secuencia);
+
+        for(let i=8; i<=37; i++) {
+            let f = datos.factores && datos.factores[i] ? datos.factores[i] : {desc:'Factor '+i, valor:'0'}; 
+            addRow(`F-${i} ${f.desc}`, f.valor);
+        }
+
+        if (esRevision) {
+            actualizarEstadoModal('preview_revision');
+        } else {
+            actualizarEstadoModal('preview_nuevo');
+        }
+    }
+
+    function cancelarPrevisualizacion() {
+        datosTemporales = {};
+        actualizarEstadoModal('lista');
+        
+        // Limpiar inputs
+        document.getElementById('inputArchivoPDF').value = '';
+        document.getElementById('nombre-archivo-seleccionado').innerText = '';
+    }
+
+    function volverALista() {
+        actualizarEstadoModal('lista');
+    }
+
+    function aceptarCarga() {
+        let f15 = 0; let f16 = 0;
+        if(datosTemporales.factores) {
+            f15 = parseFloat(datosTemporales.factores[15]?.valor_decimal || 0);
+            f16 = parseFloat(datosTemporales.factores[16]?.valor_decimal || 0);
+        }
+        let acogidoISFUT = (f15 !== 0 || f16 !== 0) ? 'S' : 'N';
+        let origen = 'Usuario'; 
+        
+        datosTemporales.acogidoISFUT = acogidoISFUT;
+        datosTemporales.origen = origen;
+
+        listaParaGrabar.push(datosTemporales);
+        renderizarTablaPrincipal();
+        
+        // Volver a la lista, limpiando selección
+        actualizarEstadoModal('lista');
+        document.getElementById('inputArchivoPDF').value = '';
+        document.getElementById('nombre-archivo-seleccionado').innerText = '';
+    }
+
+    function renderizarTablaPrincipal() {
+        const tbody = document.getElementById('tbody-carga-masiva');
+        tbody.innerHTML = '';
+
+        listaParaGrabar.forEach((item, index) => {
+            let rowHTML = `<tr onclick="seleccionarFilaMasiva(this, ${index})" style="cursor: pointer;">
+                <td class="text-nowrap">
+                    <i class="fas fa-times-circle text-danger me-2" style="cursor:pointer;" onclick="event.stopPropagation(); eliminarFila(${index})" title="Eliminar"></i>
+                    ${item.ejercicio}
+                </td>
+                <td>${item.mercado}</td>
+                <td>${item.fecha_pago}</td>
+                <td>${item.secuencia}</td>
+                <td></td>`; 
+
+            for(let i=8; i<=37; i++) {
+                let val = (item.factores && item.factores[i]) ? item.factores[i].valor_decimal : '0';
+                rowHTML += `<td>${val}</td>`;
+            }
+
+            rowHTML += `
+                <td>${item.acogidoISFUT}</td>
+                <td>${item.origen}</td>
+            </tr>`;
+            
+            tbody.insertAdjacentHTML('beforeend', rowHTML);
+        });
+        
+        initResizableTables();
+    }
+
+    function seleccionarFilaMasiva(row, index) {
+        document.querySelectorAll('#tbody-carga-masiva tr').forEach(r => r.classList.remove('selected-row'));
+        row.classList.add('selected-row');
+        selectedIndexMasiva = index;
+        document.getElementById('btnVerFormatoMasiva').disabled = false;
+    }
+
+    function accionVerFormatoMasiva() {
+        if (selectedIndexMasiva !== null && listaParaGrabar[selectedIndexMasiva]) {
+            mostrarPrevisualizacion(listaParaGrabar[selectedIndexMasiva], true);
+        }
+    }
+
+    function eliminarFila(index) {
+        if (index === selectedIndexMasiva) {
+            selectedIndexMasiva = null;
+            document.getElementById('btnVerFormatoMasiva').disabled = true;
+        } else if (selectedIndexMasiva !== null && index < selectedIndexMasiva) {
+            selectedIndexMasiva--;
+        }
+
+        listaParaGrabar.splice(index, 1);
+        renderizarTablaPrincipal();
+        
+        if (selectedIndexMasiva !== null) {
+             const rows = document.querySelectorAll('#tbody-carga-masiva tr');
+             if(rows[selectedIndexMasiva]) rows[selectedIndexMasiva].classList.add('selected-row');
+        }
+    }
+
+    function grabarTodo() {
+        if(listaParaGrabar.length === 0) {
+            alert("No hay datos para grabar");
+            return;
+        }
+
+        let tokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
+        const csrftoken = tokenInput ? tokenInput.value : '';
+
+        fetch('/calificaciones/api/guardar-lote/', {
+            method: 'POST',
+            body: JSON.stringify(listaParaGrabar),
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.error) {
+                alert("Error al guardar: " + data.error);
+            } else {
+                alert(data.mensaje);
+                location.reload(); 
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+    
+    // JS DEL MODAL INGRESO MANUAL ORIGINAL
     document.addEventListener("DOMContentLoaded", function() {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('action') === 'ingresar') {
@@ -544,30 +844,8 @@
             }
         }
     });
-
-    let selectedId = null;
-
-    function seleccionarFila(fila) {
-        document.querySelectorAll('#tablaCalificaciones tr.selected-row').forEach(tr => {
-            tr.classList.remove('selected-row');
-        });
-        fila.classList.add('selected-row');
-        selectedId = fila.getAttribute('data-id');
-        
-        document.getElementById('btnModificar').disabled = false;
-        document.getElementById('btnEliminar').disabled = false;
-    }
-
-    function accionModificar() {
-        if (selectedId) window.location.href = `/calificaciones/${selectedId}/editar/`;
-    }
-
-    function accionEliminar() {
-        if (selectedId && confirm('¿Está seguro de eliminar esta calificación?')) {
-            window.location.href = `/calificaciones/${selectedId}/eliminar/`;
-        }
-    }
-
+    
+    // Funciones del paso a paso manual
     function irAPaso2() {
         const form = document.getElementById('formIngreso');
         const inputs = form.querySelectorAll('#step1-datos-basicos input[required], #step1-datos-basicos select[required]');

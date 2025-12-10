@@ -3,6 +3,7 @@ Vistas para la app calificaciones (CRUD, reportes, cálculos y cargas masivas)
 """
 import csv
 import io
+import json
 from decimal import Decimal
 from datetime import datetime
 
@@ -11,8 +12,10 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q, Count
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import Calificacion, Cliente, Corredora, User, PersonaNatural, PersonaJuridica 
 from .forms import (
@@ -239,147 +242,113 @@ def reporte_calificaciones_por_agente(request):
     })
 
 @login_required
-@analista_requerido
-def carga_masiva_factores(request):
+@require_POST
+def procesar_pdf_ajax(request):
     """
-    Procesa PDF, detecta cliente y muestra previsualización.
+    Recibe un archivo PDF, llama a Docling y devuelve JSON para la previsualización.
     """
-    if request.method == 'POST':
-        archivo = request.FILES.get('archivo_pdf')
-        if archivo:
-            try:
-                res = procesar_archivo_pdf(archivo)
-                if res.get('error'):
-                    messages.error(request, res['error'])
-                    return redirect('calificaciones:listado')
+    if 'archivo_pdf' not in request.FILES:
+        return JsonResponse({'error': 'No se recibió ningún archivo PDF.'}, status=400)
 
-                rut = res['cliente_detectado'].get('rut')
-                cliente_db = Cliente.objects.filter(rut=rut).first() if rut else None
+    archivo = request.FILES['archivo_pdf']
+    
+    try:
+        # Llamamos al servicio actualizado
+        datos_json = procesar_archivo_pdf(archivo)
+        
+        if 'error' in datos_json:
+            return JsonResponse({'error': datos_json['error']}, status=500)
+            
+        return JsonResponse(datos_json)
 
-                # Serializar para sesión
-                datos_sesion = {
-                    'metadata': res['metadata'],
-                    'cliente': res['cliente_detectado'],
-                    'cliente_existe': cliente_db is not None,
-                    'cliente_id': cliente_db.id if cliente_db else None,
-                    'filas': []
-                }
-                for f in res['filas']:
-                    row = f.copy()
-                    for k,v in f.items(): 
-                        if isinstance(v, Decimal): row[k] = str(v)
-                    datos_sesion['filas'].append(row)
+    except Exception as e:
+        return JsonResponse({'error': f"Error interno: {str(e)}"}, status=500)
 
-                request.session['carga_temporal'] = datos_sesion
-                
-                # Renderizar lista con modal abierto
-                context = get_lista_context(request)
-                context['preview_data'] = datos_sesion
-                context['modal_open'] = 'modalPrevisualizacion'
-                return render(request, 'calificaciones/lista.html', context)
-
-            except Exception as e:
-                messages.error(request, f"Error: {e}")
-                return redirect('calificaciones:listado')
-
-    return redirect('calificaciones:listado')
 
 @login_required
-@analista_requerido
-def confirmar_carga(request):
+@require_POST
+def guardar_lote_ajax(request):
     """
-    Paso 2: Guarda automáticamente usando los datos detectados.
+    Recibe el JSON confirmado por el usuario y guarda los registros en BD.
     """
-    if request.method == 'POST':
-        datos = request.session.get('carga_temporal')
-        if not datos: return redirect('calificaciones:listado')
-            
-        try:
-            cliente = None
-            
-            # --- A. LÓGICA AUTOMÁTICA DE CLIENTE ---
-            if datos['cliente_existe'] and datos.get('cliente_id'):
-                # Usar existente
-                cliente = Cliente.objects.get(pk=datos['cliente_id'])
-            else:
-                # Crear NUEVO automáticamente
-                rut_nuevo = datos['cliente']['rut']
-                nombre_nuevo = datos['cliente']['nombre']
-                tipo_persona = datos['cliente']['tipo_persona'] # 'natural' o 'juridica' (Ya detectado en services)
-                
-                if not rut_nuevo:
-                    raise Exception("No se pudo detectar el RUT del cliente en el archivo.")
+    try:
+        data = json.loads(request.body)
+        registros_guardados = 0
+        errores = []
 
-                # Crear cliente base
-                cliente = Cliente.objects.create(rut=rut_nuevo, activo=True)
+        for item in data:
+            try:
+                # 1. Gestionar Cliente (Buscar o Crear)
+                rut_cliente = item.get('rut_emisor') # Si Docling lo extrajo
+                nombre_cliente = item.get('instrumento') # Usamos instrumento como fallback de nombre
                 
-                if tipo_persona == 'juridica':
-                    PersonaJuridica.objects.create(
-                        cliente=cliente,
-                        razon_social=nombre_nuevo or "Razón Social Pendiente",
-                        domicilio_tributario="Dirección extraída de PDF"
+                # Buscamos por nombre si no hay RUT, o creamos uno dummy
+                # Ajusta esta lógica según tu modelo estricto de Clientes
+                cliente = None
+                if nombre_cliente:
+                    cliente = Cliente.objects.filter(persona_juridica__razon_social__icontains=nombre_cliente).first()
+                
+                if not cliente:
+                    # Crear cliente temporal o asignar a "Sin Clasificar"
+                    # Por ahora requerimos que exista o lo creamos básico
+                    cliente, created = Cliente.objects.get_or_create(
+                        rut='99.999.999-9', # Rut dummy si no se extrajo
+                        defaults={'activo': True}
                     )
-                else:
-                    # Separar nombre (simple)
-                    if nombre_nuevo:
-                        partes = nombre_nuevo.split(' ', 1)
-                        nombre = partes[0]
-                        apellido = partes[1] if len(partes) > 1 else "."
-                    else:
-                        nombre, apellido = "Nombre", "Pendiente"
-                        
-                    PersonaNatural.objects.create(
-                        cliente=cliente,
-                        nombre=nombre,
-                        apellido=apellido
-                    )
+                    if created:
+                        PersonaJuridica.objects.create(cliente=cliente, razon_social=nombre_cliente or "Cliente Nuevo")
 
-            # --- B. GUARDAR CALIFICACIONES ---
-            contador = 0
-            for fila in datos['filas']:
+                # 2. Crear Calificación
+                fecha_str = item.get('fecha_pago')
                 fecha_obj = None
-                if fila.get('fecha_pago'):
+                if fecha_str:
                     try:
-                        # Intenta varios formatos por si la IA devuelve YYYY-MM-DD o DD-MM-YYYY
-                        fecha_str = str(fila['fecha_pago']).replace('-', '/')
                         fecha_obj = datetime.strptime(fecha_str, '%d/%m/%Y').date()
-                    except ValueError:
-                        try:
-                            fecha_obj = datetime.strptime(fecha_str, '%Y/%m/%d').date()
-                        except:
-                            pass
+                    except:
+                        fecha_obj = timezone.now().date()
 
-                calificacion = Calificacion(
-                    cliente=cliente,
+                nueva_calificacion = Calificacion(
                     user=request.user,
-                    anno=datos['metadata'].get('anno', datetime.now().year),
-                    mercado='AC',
-                    instrumento=fila.get('instrumento', 'Sin Instrumento')[:50],
+                    cliente=cliente,
+                    anno=item.get('ejercicio') or datetime.now().year,
+                    mercado=item.get('mercado', 'AC'),
+                    instrumento=item.get('instrumento') or "Sin Nombre",
                     fecha_pago=fecha_obj,
-                    factor_actualizacion=Decimal(fila.get('factor_actualizacion', 0)),
-                    isfut=fila.get('isfut', False),
-                    estado='BORRADOR',
-                    ingreso_montos=False
+                    secuencia_evento=item.get('secuencia'),
+                    
+                    isfut=(item.get('acogidoISFUT') == 'S'),
+                    origen=item.get('origen'),
+                    estado='BORRADOR' # Siempre entran como borrador para revisión final
                 )
                 
-                for i in range(8, 38):
-                    key = f'factor{i}'
-                    val = Decimal(fila.get(key, 0))
-                    setattr(calificacion, key, val)
-
+                # Asignar corredora si corresponde
                 if hasattr(request.user, 'corredora') and request.user.corredora:
-                    calificacion.corredora = request.user.corredora
-                    
-                calificacion.save()
-                contador += 1
-            
-            del request.session['carga_temporal']
-            messages.success(request, f"Carga finalizada. Cliente: {cliente.get_nombre_completo()}. Registros: {contador}.")
-            
-        except Exception as e:
-            messages.error(request, f"Error al guardar: {str(e)}")
-            
-    return redirect('calificaciones:listado')
+                    nueva_calificacion.corredora = request.user.corredora
+
+                # 3. Asignar Factores 8-37
+                factores = item.get('factores', {})
+                for i in range(8, 38):
+                    k = str(i)
+                    if k in factores:
+                        val_str = factores[k].get('valor_decimal', '0')
+                        val_dec = Decimal(val_str)
+                        setattr(nueva_calificacion, f'factor{i}', val_dec)
+
+                nueva_calificacion.save()
+                registros_guardados += 1
+
+            except Exception as e_row:
+                errores.append(f"Fila {item.get('instrumento')}: {str(e_row)}")
+
+        if registros_guardados > 0:
+            return JsonResponse({'mensaje': f'{registros_guardados} registros guardados exitosamente.'})
+        else:
+            msg_error = "No se guardó nada."
+            if errores: msg_error += f" Errores: {', '.join(errores)}"
+            return JsonResponse({'error': msg_error}, status=400)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 # ============================================================================
 # VISTAS DE CLIENTES (CRUD)

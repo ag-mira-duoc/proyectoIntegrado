@@ -47,8 +47,8 @@ class Documento(models.Model):
     ]
 
     TIPOS_DOCUMENTO = [
-        ('FORM_1851', 'Formulario 1851 SII'),
-        ('CERTIFICADO', 'Certificado Tributario'),
+        ('CERT_70', 'Certificado 70 (DJ 1948)'),
+        ('CERT_44', 'Certificado 44 (DJ 1922)'),
         ('COMPROBANTE', 'Comprobante de Dividendos'),
         ('OTRO', 'Otro Documento'),
     ]
@@ -73,7 +73,7 @@ class Documento(models.Model):
     tipo_documento = models.CharField(
         max_length=20,
         choices=TIPOS_DOCUMENTO,
-        default='FORM_1851',
+        default='CERT_70',
         help_text="Tipo de documento tributario"
     )
     nombre_archivo = models.CharField(
