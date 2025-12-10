@@ -18,6 +18,7 @@ urlpatterns = [
     path('corredoras/', include('calificaciones.urls_corredoras')),
     path('usuarios/', include('usuarios.urls')),
     path('auditoria/', include('auditoria.urls')),
+    path('accounts/', include('django.contrib.auth.urls')),
 ]
 
 if settings.DEBUG:
