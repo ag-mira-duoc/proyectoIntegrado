@@ -39,19 +39,40 @@
         border-right: 2px solid #0d6efd;
     }
 
-    /* --- Columnas fijas (Sticky) --- */
-    .col-fixed-1 { position: sticky; left: 0; background-color: #fff; z-index: 2; width: 60px; border-right: 1px solid #dee2e6; }
-    .col-fixed-2 { position: sticky; left: 60px; background-color: #fff; z-index: 2; width: 120px; border-right: 2px solid #dee2e6; }
+   /* --- Columnas Normales (Ya no son fijas/sticky) --- */
+    .col-fixed-1 { 
+        width: 80px;        
+        min-width: 80px;
+        background-color: #fff; 
+        border-right: 1px solid #dee2e6; 
+    }
     
-    .table-hover tbody tr:hover td.col-fixed-1,
-    .table-hover tbody tr:hover td.col-fixed-2 {
-        background-color: #e9ecef;
+    .col-fixed-2 { 
+        width: 250px;       /* Ancho amplio para leer el nombre completo */
+        min-width: 250px;
+        background-color: #fff; 
+        border-right: 2px solid #dee2e6; 
+    }
+    
+    /* Nota: Se eliminaron las reglas de z-index para thead porque ya no son necesarias */
+
+    /* --- INDICADOR DE FILA SELECCIONADA --- */
+    .selected-row > td {
+        background-color: #cfe2ff !important; 
+        color: #084298;
+        border-bottom: 1px solid #9ec5fe;
     }
 
-    .table-hover tbody tr.selected-row td {
+    .selected-row > td.col-fixed-1,
+    .selected-row > td.col-fixed-2 {
         background-color: #cfe2ff !important;
-        border-color: #0d6efd;
+        color: #084298;
     }
+
+    .table-hover tbody tr:hover td {
+        background-color: #e9ecef;
+    }
+    
 
     /* --- Estilos Modal Manual --- */
     .resumen-container { 
@@ -156,9 +177,18 @@
                 <input type="text" name="search" class="form-control form-control-sm" placeholder="Instrumento..." value="{{ request.GET.search|default:'' }}">
             </div>
 
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-secondary btn-sm w-100 fw-bold"><i class="bi bi-search"></i> BUSCAR</button>
+            <div class="col-md-2 d-flex gap-1 align-items-end">
+                <button type="submit" class="btn btn-secondary btn-sm flex-grow-1 fw-bold">
+                    <i class="bi bi-search"></i> BUSCAR
+                </button>
+                
+                {% if request.GET.search or request.GET.anno or request.GET.mercado or request.GET.origen %}
+                    <a href="{{ request.path }}" class="btn btn-outline-danger btn-sm" title="Limpiar todos los filtros">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                {% endif %}
             </div>
+        </form>
         </form>
     </div>
 </div>
@@ -171,8 +201,10 @@
                     <tr>
                         <th class="col-fixed-1 text-center">Ejercicio</th>
                         <th class="col-fixed-2">Instrumento</th>
-                        <th>Fec. Pago</th>
-                        <th class="table-info text-center">Factor Act.</th>
+                        
+                        <th style="min-width: 100px;">Fec. Pago</th>
+                        
+                        <th class="text-center">Factor Act.</th>
                         
                         <th class="text-center">F-8</th><th class="text-center">F-9</th><th class="text-center">F-10</th>
                         <th class="text-center">F-11</th><th class="text-center">F-12</th><th class="text-center">F-13</th>
@@ -193,20 +225,44 @@
                     {% for c in calificaciones %}
                     <tr data-id="{{ c.pk }}" onclick="seleccionarFila(this)">
                         <td class="col-fixed-1 text-center fw-bold">{{ c.anno }}</td>
-                        <td class="col-fixed-2 fw-bold text-primary">{{ c.instrumento }}</td>
-                        <td>{{ c.fecha_pago|date:"d-m-Y" }}</td>
-                        <td class="text-end table-info fw-bold">{{ c.factor_actualizacion|default:"-" }}</td>
+                        <td class="col-fixed-2 fw-bold text-primary text-truncate" title="{{ c.instrumento }}">
+                            {{ c.instrumento }}
+                        </td>
                         
-                        <td class="text-end">{{ c.factor8|default:"-" }}</td><td class="text-end">{{ c.factor9|default:"-" }}</td><td class="text-end">{{ c.factor10|default:"-" }}</td>
-                        <td class="text-end">{{ c.factor11|default:"-" }}</td><td class="text-end">{{ c.factor12|default:"-" }}</td><td class="text-end">{{ c.factor13|default:"-" }}</td>
-                        <td class="text-end">{{ c.factor14|default:"-" }}</td><td class="text-end">{{ c.factor15|default:"-" }}</td><td class="text-end">{{ c.factor16|default:"-" }}</td>
-                        <td class="text-end">{{ c.factor17|default:"-" }}</td><td class="text-end">{{ c.factor18|default:"-" }}</td><td class="text-end">{{ c.factor19|default:"-" }}</td>
-                        <td class="text-end">{{ c.factor20|default:"-" }}</td><td class="text-end">{{ c.factor21|default:"-" }}</td><td class="text-end">{{ c.factor22|default:"-" }}</td>
-                        <td class="text-end">{{ c.factor23|default:"-" }}</td><td class="text-end">{{ c.factor24|default:"-" }}</td><td class="text-end">{{ c.factor25|default:"-" }}</td>
-                        <td class="text-end">{{ c.factor26|default:"-" }}</td><td class="text-end">{{ c.factor27|default:"-" }}</td><td class="text-end">{{ c.factor28|default:"-" }}</td>
-                        <td class="text-end">{{ c.factor29|default:"-" }}</td><td class="text-end">{{ c.factor30|default:"-" }}</td><td class="text-end">{{ c.factor31|default:"-" }}</td>
-                        <td class="text-end">{{ c.factor32|default:"-" }}</td><td class="text-end">{{ c.factor33|default:"-" }}</td><td class="text-end">{{ c.factor34|default:"-" }}</td>
-                        <td class="text-end">{{ c.factor35|default:"-" }}</td><td class="text-end">{{ c.factor36|default:"-" }}</td><td class="text-end">{{ c.factor37|default:"-" }}</td>
+                        <td>{{ c.fecha_pago|date:"d-m-Y" }}</td>
+                        
+                        <td class="text-end">{{ c.factor_actualizacion|default_if_none:0 }}</td>
+                        
+                        <td class="text-end">{{ c.factor8|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor9|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor10|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor11|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor12|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor13|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor14|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor15|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor16|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor17|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor18|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor19|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor20|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor21|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor22|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor23|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor24|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor25|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor26|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor27|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor28|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor29|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor30|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor31|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor32|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor33|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor34|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor35|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor36|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor37|default_if_none:0 }}</td>
 
                         <td class="text-center fw-bold bg-warning-subtle">
                             {% if c.isfut %}S{% else %}N{% endif %}
@@ -273,112 +329,196 @@
 <div class="modal fade" id="modalIngresoCalificacion" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-xl modal-dialog-centered"> 
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="modalLabel">Ingresar Calificacion Tributaria</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header bg-white border-bottom-0">
+                <h5 class="modal-title text-primary fw-bold" id="modalLabel">
+                    <i class="bi bi-pencil-square me-2"></i>Ingresar Calificación
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             
             <form method="post" action="{% url 'calificaciones:crear' %}" id="formIngreso">
                 {% csrf_token %}
                 <input type="hidden" name="estado" value="BORRADOR">
 
-                <div class="modal-body">
+                <div class="modal-body pt-0">
                     <div id="step1-datos-basicos">
-                        <h6 class="text-muted border-bottom pb-2 mb-3">Paso 1: Datos Generales</h6>
-                        <div class="row g-3">
-                            <div class="col-12">
-                                <label class="form-label fw-bold">Cliente *</label>
-                                <select name="cliente" class="form-select" required>
-                                    <option value="">Seleccione...</option>
-                                    {% for cliente in clientes_list %}
-                                    <option value="{{ cliente.id }}">{{ cliente.get_nombre_completo }} ({{ cliente.rut }})</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Mercado</label>
-                                <select name="mercado" class="form-select">
-                                    <option value="AC">Acciones</option>
-                                    <option value="CFI">CFI</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Instrumento</label>
-                                <input type="text" name="instrumento" class="form-control" maxlength="50" required>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label">Descripcion</label>
-                                <input type="text" name="descripcion" class="form-control" maxlength="255">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Fecha Pago</label>
-                                <input type="date" name="fecha_pago" class="form-control" required>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Secuencia Evento</label>
-                                <input type="number" name="secuencia_evento" class="form-control">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Dividendo</label>
-                                <input type="number" step="0.01" name="dividendo" class="form-control" value="0.00">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Valor Historico</label>
-                                <input type="number" step="0.00000001" name="valor_historico" class="form-control" value="0.00">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Factor Actualizacion</label>
-                                <input type="number" step="0.000001" name="factor_actualizacion" class="form-control">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Año (Ejercicio)</label>
-                                <input type="number" name="anno" class="form-control" value="2025" required>
-                            </div>
-                            <div class="col-12 mt-4">
-                                <div class="form-check form-switch p-3 border rounded bg-light">
-                                    <input class="form-check-input ms-0 me-3" type="checkbox" name="isfut" id="id_isfut" style="float: none;">
-                                    <label class="form-check-label fw-bold" for="id_isfut">Acogido a ISFUT</label>
+                        <div class="container-fluid px-0">
+                            <div class="row g-3">
+                                <div class="col-lg-7">
+                                    <div class="row g-2 align-items-center mb-2">
+                                        <div class="col-3"><label class="fw-bold text-secondary small">Mercado</label></div>
+                                        <div class="col-9">
+                                            <select name="mercado" class="form-select form-select-sm bg-light">
+                                                <option value="AC">Acciones (AC)</option>
+                                                <option value="CFI">CFI</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-2 align-items-center mb-2">
+                                        <div class="col-3"><label class="fw-bold text-secondary small">Instrumento</label></div>
+                                        <div class="col-9">
+                                            <input type="text" name="instrumento" class="form-control form-control-sm bg-warning-subtle" required>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row g-2 align-items-center mb-2">
+                                        <div class="col-3"><label class="fw-bold text-secondary small">RUT</label></div>
+                                        <div class="col-9">
+                                            <input type="text" name="rut_cliente" class="form-control form-control-sm bg-warning-subtle" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-2 align-items-center mb-2">
+                                        <div class="col-3"><label class="fw-bold text-secondary small">Descripción</label></div>
+                                        <div class="col-9">
+                                            <input type="text" name="descripcion" class="form-control form-control-sm bg-warning-subtle">
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-2 align-items-center mb-2">
+                                        <div class="col-3"><label class="fw-bold text-secondary small">Fecha Pago</label></div>
+                                        <div class="col-9">
+                                            <input type="date" name="fecha_pago" class="form-control form-control-sm bg-warning-subtle" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-2 align-items-center mb-2">
+                                        <div class="col-3"><label class="fw-bold text-secondary small">Secuencia Evento</label></div>
+                                        <div class="col-9">
+                                            <input type="number" name="secuencia_evento" class="form-control form-control-sm">
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-2 align-items-center mb-2">
+                                        <div class="col-3"><label class="fw-bold text-secondary small">Dividendo</label></div>
+                                        <div class="col-9">
+                                            <input type="number" step="0.01" name="dividendo" class="form-control form-control-sm" value="0">
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-2 align-items-center mb-2">
+                                        <div class="col-3"><label class="fw-bold text-secondary small">Valor Histórico</label></div>
+                                        <div class="col-9">
+                                            <input type="number" step="0.00000001" name="valor_historico" class="form-control form-control-sm" value="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-5">
+                                    <div class="p-3 bg-light rounded border">
+                                        <div class="mb-3">
+                                            <label class="fw-bold text-secondary small d-block">Factor de Actualización</label>
+                                            <input type="number" step="0.000001" name="factor_actualizacion" class="form-control form-control-sm" value="0">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="fw-bold text-secondary small d-block">Año</label>
+                                            <input type="number" name="anno" class="form-control form-control-sm" value="2025">
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="isfut" id="id_isfut">
+                                            <label class="form-check-label fw-bold small" for="id_isfut">ISFUT</label>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <input type="hidden" name="numero_dividendo">
-                            <input type="hidden" name="tipo_sociedad">
                         </div>
                     </div>
 
                     <div id="step2-factores" style="display: none;">
-                        <div class="resumen-container">
-                            <h6 class="text-primary small fw-bold mb-3 border-bottom pb-2">
-                                <i class="bi bi-card-checklist"></i> Resumen Instrumento
-                            </h6>
-                            <div class="row g-2">
-                                <div class="col-md-4"><div class="resumen-label">Mercado</div><div class="resumen-value" id="res_mercado"></div></div>
-                                <div class="col-md-8"><div class="resumen-label">Instrumento</div><div class="resumen-value" id="res_instrumento"></div></div>
-                                <div class="col-md-4"><div class="resumen-label">Valor Historico</div><div class="resumen-value" id="res_valor_historico"></div></div>
-                                <div class="col-md-4"><div class="resumen-label">Fecha Pago</div><div class="resumen-value" id="res_fecha"></div></div>
-                                <div class="col-md-4"><div class="resumen-label">Evento Capital</div><div class="resumen-value">0</div></div>
-                                <div class="col-md-12"><div class="resumen-label">Descripcion</div><div class="resumen-value" id="res_descripcion"></div></div>
-                                <div class="col-md-4"><div class="resumen-label">Secuencia Evento</div><div class="resumen-value" id="res_secuencia"></div></div>
-                                <div class="col-md-4"><div class="resumen-label">Año</div><div class="resumen-value" id="res_anno"></div></div>
-                                
-                                <div class="col-md-4 d-flex align-items-end">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="ingreso_montos" id="check_ingreso_montos">
-                                        <label class="form-check-label small fw-bold" for="check_ingreso_montos">Ingreso por Montos</label>
+                        
+                        <div class="card bg-light border-0 mb-3">
+                            <div class="card-body py-2">
+                                <div class="row g-2 small">
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Mercado</span>
+                                        <strong id="res_mercado" class="bg-white px-2 border rounded d-block"></strong>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Instrumento</span>
+                                        <strong id="res_instrumento" class="bg-white px-2 border rounded d-block"></strong>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Valor Histórico</span>
+                                        <strong id="res_valor_historico" class="bg-white px-2 border rounded d-block"></strong>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Ingreso por Montos</span>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="ingreso_montos_check">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Fecha Pago</span>
+                                        <strong id="res_fecha" class="bg-white px-2 border rounded d-block"></strong>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Evento Capital</span>
+                                        <strong id="res_evento_capital" class="bg-white px-2 border rounded d-block"></strong>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <span class="text-muted d-block">Descripción</span>
+                                        <strong id="res_descripcion" class="bg-white px-2 border rounded d-block text-truncate"></strong>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <h6 class="text-muted border-bottom pb-2 mb-3">Factores Tributarios</h6>
-                        <div style="max-height: 300px; overflow-y: auto; padding: 10px; border: 1px solid #dee2e6; border-radius: 5px;">
+                        <div class="border rounded p-2" style="max-height: 45vh; overflow-y: auto;">
                             <div class="row g-2">
                                 <script>
-                                    // Generacion rapida de campos F8-F37 para el modal manual
+                                    const descripcionesFactores = {
+                                        8: "Monto Afecto IGC y/o IA c/Créd. IDPC desde 01.01.2017",
+                                        9: "Afectos IGC y/o IA c/Créd. IDPC hasta 31.12.2016",
+                                        10: "Afectos IGC y/o IA c/Créd. pago IDPC Voluntario",
+                                        11: "Afectos IGC y/o IA Sin Derecho a Crédito",
+                                        12: "REX - Trib. Cumplida - RAP y Dif. Inicial ex Art. 14 TER A",
+                                        13: "REX - Trib. Cumplida - Otras Rentas Sin Prioridad",
+                                        14: "REX - Trib. Cumplida - Exceso Dist. Desproporcionadas",
+                                        15: "REX - Trib. Cumplida - ISFUT Ley 20.780",
+                                        16: "REX - Rentas hasta 1983 y/o ISFUT Ley 21.210",
+                                        17: "REX - Exentas IGC (Art. 11), Afectas IA",
+                                        18: "REX - Exentas IGC y/o IA",
+                                        19: "Ingresos No Constitutivos de Renta",
+        
+
+                                        20: "ST 2017 - Afectas - No Suj. Rest. hasta 2019 (Sin Dev.)",
+                                        21: "ST 2017 - Afectas - No Suj. Rest. hasta 2019 (Con Dev.)",
+                                        22: "ST 2017 - Afectas - No Suj. Rest. desde 2020 (Sin Dev.)",
+                                        23: "ST 2017 - Afectas - No Suj. Rest. desde 2020 (Con Dev.)",
+                                        24: "ST 2017 - Afectas - Suj. Rest. (Sin Dev.)",
+                                        25: "ST 2017 - Afectas - Suj. Rest. (Con Dev.)",
+                                        26: "ST 2017 - Exentas - Suj. Rest. (Sin Dev.)",
+                                        27: "ST 2017 - Exentas - Suj. Rest. (Con Dev.)",
+                                        28: "ST 2017 - Crédito por IPE",
+        
+                                        29: "ST 2016 - Afectas (Sin Dev.)",
+                                        30: "ST 2016 - Afectas (Con Dev.)",
+                                        31: "ST 2016 - Exentas (Sin Dev.)",
+                                        32: "ST 2016 - Exentas (Con Dev.)",
+                                        33: "ST 2016 - Crédito por IPE",
+
+                                        34: "Créd. Impto. Tasa Adicional, Ex. Art. 21 LIR",
+                                        35: "Tasa Efectiva del Créd. del FUT (TEF)",
+                                        36: "Tasa Efectiva del Créd. del FUNT (TEX)",
+                                        37: "Devolución Capital Art. 17 N°7 LIR"
+                                        };
+                                    
                                     for(let i=8; i<=37; i++){
+                                        let desc = descripcionesFactores[i] || "Sin Descripción";
+                                        // Usamos text-wrap y lh-sm (line-height small) para que las descripciones largas
+                                        // se acomoden en varias líneas de forma compacta y legible.
                                         document.write(`
-                                            <div class="col-md-4">
-                                                <label class="small fw-bold">Factor ${i}</label>
-                                                <input type="number" step="0.00000001" name="factor${i}" class="form-control form-control-sm">
+                                            <div class="col-md-6 mb-2">
+                                                <div class="d-flex align-items-start">
+                                                    <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;" title="${desc}">
+                                                        <strong>F-${i}</strong> ${desc}
+                                                    </label>
+                                                    <div style="width: 35%;">
+                                                        <input type="number" step="0.00000001" name="factor${i}" class="form-control form-control-sm border-secondary-subtle">
+                                                    </div>
+                                                </div>
                                             </div>
                                         `);
                                     }
@@ -387,11 +527,21 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" id="btnSiguiente" onclick="irAPaso2()">Siguiente</button>
-                    <button type="button" class="btn btn-outline-secondary" id="btnAtras" onclick="irAPaso1()" style="display: none;">Volver</button>
-                    <button type="submit" class="btn btn-success" id="btnGuardar" style="display: none;">GRABAR</button>
+
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">CANCELAR</button>
+                    
+                    <button type="button" class="btn btn-primary px-4" id="btnSiguiente" onclick="irAPaso2()" style="background-color: #0d4e68; border:none;">
+                        INGRESAR
+                    </button>
+                    
+                    <button type="button" class="btn btn-secondary px-4" id="btnAtras" onclick="irAPaso1()" style="display: none;">
+                        VOLVER
+                    </button>
+                    
+                    <button type="submit" class="btn btn-success px-4" id="btnGuardar" style="display: none;">
+                        GRABAR
+                    </button>
                 </div>
             </form>
         </div>
@@ -852,41 +1002,68 @@
     // Funciones del paso a paso manual
     function irAPaso2() {
         const form = document.getElementById('formIngreso');
-        const inputs = form.querySelectorAll('#step1-datos-basicos input[required], #step1-datos-basicos select[required]');
         
+        // Validar campos requeridos del Paso 1
+        // Nota: 'dividendo' ahora es 'Evento Capital' visualmente
+        const inputs = form.querySelectorAll('#step1-datos-basicos input[required], #step1-datos-basicos select[required]');
         let valid = true;
         inputs.forEach(i => {
-            if (!i.value) { i.classList.add('is-invalid'); valid = false; }
-            else { i.classList.remove('is-invalid'); }
+            if (!i.value) { 
+                i.classList.add('is-invalid'); 
+                valid = false; 
+            } else { 
+                i.classList.remove('is-invalid'); 
+            }
         });
+
         if (!valid) {
-            alert("Por favor complete los campos obligatorios del paso 1.");
+            alert("Por favor complete los campos obligatorios (RUT, Instrumento, Fecha, Año).");
             return;
         }
 
+        // Mapeo de valores para el Resumen del Paso 2
         const mercadoSelect = form.querySelector('select[name="mercado"]');
+        
+        // 1. Mercado
         document.getElementById('res_mercado').textContent = mercadoSelect.options[mercadoSelect.selectedIndex].text;
+        
+        // 2. Instrumento (Ahora es el input de texto)
         document.getElementById('res_instrumento').textContent = form.querySelector('input[name="instrumento"]').value;
+        
+        // 3. Valor Histórico
         document.getElementById('res_valor_historico').textContent = form.querySelector('input[name="valor_historico"]').value || '0.00';
+        
+        // 4. Fecha Pago
         document.getElementById('res_fecha').textContent = form.querySelector('input[name="fecha_pago"]').value;
+        
+        // 5. Evento Capital (Input name="dividendo")
+        document.getElementById('res_evento_capital').textContent = form.querySelector('input[name="dividendo"]').value || '0.00';
+        
+        // 6. Descripción
         document.getElementById('res_descripcion').textContent = form.querySelector('input[name="descripcion"]').value || '-';
-        document.getElementById('res_secuencia').textContent = form.querySelector('input[name="secuencia_evento"]').value || '-';
-        document.getElementById('res_anno').textContent = form.querySelector('input[name="anno"]').value;
 
+        // Cambio de Visibilidad
         document.getElementById('step1-datos-basicos').style.display = 'none';
         document.getElementById('step2-factores').style.display = 'block';
         
+        // Cambio de Botones
         document.getElementById('btnSiguiente').style.display = 'none';
         document.getElementById('btnAtras').style.display = 'inline-block';
         document.getElementById('btnGuardar').style.display = 'inline-block';
+        
+        // Cambiar titulo del modal
+        document.getElementById('modalLabel').innerText = "UI_INGRESO_CALIFICACIONES_TRIBUTARIAS";
     }
 
     function irAPaso1() {
         document.getElementById('step1-datos-basicos').style.display = 'block';
         document.getElementById('step2-factores').style.display = 'none';
+        
         document.getElementById('btnSiguiente').style.display = 'inline-block';
         document.getElementById('btnAtras').style.display = 'none';
         document.getElementById('btnGuardar').style.display = 'none';
+        
+        document.getElementById('modalLabel').innerHTML = '<i class="bi bi-pencil-square me-2"></i>Ingresar Calificación';
     }
 </script>
 {% endblock %}

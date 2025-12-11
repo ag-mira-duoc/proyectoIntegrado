@@ -7,6 +7,7 @@ import json
 from decimal import Decimal
 from datetime import datetime
 
+from django.db import transaction
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -19,7 +20,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from .models import Calificacion, Cliente, Corredora, User, PersonaNatural, PersonaJuridica 
 from .forms import (
-    CalificacionForm, ClienteForm, PersonaNaturalForm, PersonaJuridicaForm, CorrederaForm,
+    CalificacionForm, ClienteForm, PersonaNaturalForm, PersonaJuridicaForm, CorredoraForm   ,
     IngresoMontoForm, CargaMasivaFactoresForm
 )
 from .services import procesar_archivo_pdf
@@ -31,27 +32,68 @@ from usuarios.decorators import analista_requerido, administrador_requerido, rol
 # HELPER: Contexto común para la lista (Evita duplicar código)
 # ============================================================================
 def get_lista_context(request):
-    """Retorna el contexto base necesario para renderizar lista.html"""
+    """Retorna el contexto base para lista.html con lógica de negocio corregida"""
+    
+    # --- 1. QuerySet Base y Seguridad de Visibilidad ---
     calificaciones = Calificacion.objects.select_related('cliente', 'user', 'corredora').all()
     
-    # Visibilidad
-    es_privilegiado = (request.user.is_superuser or request.user.es_administrador() or request.user.es_auditor())
+    es_privilegiado = (request.user.is_superuser or 
+                       getattr(request.user, 'es_administrador', lambda: False)() or 
+                       getattr(request.user, 'es_auditor', lambda: False)())
+    
+    # LÓGICA DE VISIBILIDAD:
+    # Si es analista/corredor, SOLO ve calificaciones de SU corredora.
     if not es_privilegiado:
         if hasattr(request.user, 'corredora') and request.user.corredora:
             calificaciones = calificaciones.filter(corredora=request.user.corredora)
         else:
             calificaciones = calificaciones.filter(user=request.user)
 
-    # Orden y Paginación
+    # --- 2. Aplicación de Filtros (Búsqueda) ---
+    
+    # A) Búsqueda por Texto
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        calificaciones = calificaciones.filter(instrumento__icontains=search_query)
+
+    # B) Año
+    anno = request.GET.get('anno')
+    if anno:
+        calificaciones = calificaciones.filter(anno=anno)
+
+    # C) Mercado
+    mercado = request.GET.get('mercado')
+    if mercado:
+        calificaciones = calificaciones.filter(mercado=mercado)
+
+    # D) Origen (Usuario)
+    origen = request.GET.get('origen')
+    if origen:
+        calificaciones = calificaciones.filter(user__id=origen)
+
+
+    # --- 3. Generación de Listas para los Desplegables ---
+    
+    # Lógica para llenar el select de "Origen":
+    if es_privilegiado:
+        # Admins ven a todos los usuarios activos
+        usuarios_list = User.objects.filter(is_active=True).order_by('apellido')
+    elif hasattr(request.user, 'corredora') and request.user.corredora:
+        # Analistas SOLO ven usuarios de SU MISMA corredora
+        usuarios_list = User.objects.filter(
+            is_active=True, 
+            corredora=request.user.corredora
+        ).order_by('apellido')
+    else:
+        usuarios_list = User.objects.filter(pk=request.user.pk)
+
+    # Orden y Paginación final
     calificaciones = calificaciones.order_by('-anno', '-created_at')
     paginator = Paginator(calificaciones, 25)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    page_obj = paginator.get_page(request.GET.get('page'))
     
-    # Listas para filtros y modales
     clientes_list = Cliente.objects.filter(activo=True)
     years = range(2020, datetime.now().year + 2)
-    usuarios_list = User.objects.filter(is_active=True).order_by('apellido') if es_privilegiado else []
 
     return {
         'calificaciones': page_obj,
@@ -59,7 +101,7 @@ def get_lista_context(request):
         'is_paginated': page_obj.has_other_pages(),
         'years': years,
         'clientes_list': clientes_list,
-        'usuarios_list': usuarios_list,
+        'usuarios_list': usuarios_list, # Ahora contiene la lista filtrada correctamente
         'es_privilegiado': es_privilegiado,
     }
 
@@ -119,18 +161,55 @@ def calificacion_detalle(request, pk):
 @analista_requerido
 def calificacion_crear(request):
     if request.method == 'POST':
-        form = CalificacionForm(request.POST, user=request.user)
-        if form.is_valid():
-            calificacion = form.save(commit=False)
-            calificacion.user = request.user
-            if hasattr(request.user, 'corredora') and request.user.corredora:
-                calificacion.corredora = request.user.corredora
-            calificacion.save()
-            messages.success(request, 'Calificación creada exitosamente.')
-            return redirect('calificaciones:detalle', pk=calificacion.pk)
-        else:
-            messages.error(request, f'Error al guardar: {form.errors.as_text()}')
+        rut_ingresado = request.POST.get('rut_cliente')
+        nombre_instrumento = request.POST.get('instrumento')
+        # El input type="date" siempre envía la fecha como 'YYYY-MM-DD'
+        fecha_pago_raw = request.POST.get('fecha_pago') 
+        
+        if not rut_ingresado or not nombre_instrumento:
+            messages.error(request, 'El RUT y el Instrumento son obligatorios.')
             return redirect('calificaciones:listado')
+
+        try:
+            with transaction.atomic():
+                # 1. BUSCAR O CREAR CLIENTE
+                cliente = Cliente.objects.filter(rut=rut_ingresado).first()
+                if not cliente:
+                    cliente = Cliente.objects.create(rut=rut_ingresado, activo=True)
+                    PersonaJuridica.objects.create(
+                        cliente=cliente, 
+                        razon_social=nombre_instrumento,
+                        domicilio_tributario="Sin Domicilio",
+                        giro="Sin Giro"
+                    )
+                
+                # 2. PREPARAR DATOS
+                data = request.POST.copy()
+                data['cliente'] = cliente.id
+                
+                data['fecha_pago'] = fecha_pago_raw 
+
+                form = CalificacionForm(data, user=request.user)
+                
+                if form.is_valid():
+                    calificacion = form.save(commit=False)
+                    calificacion.user = request.user
+                    calificacion.cliente = cliente
+                    
+                    if hasattr(request.user, 'corredora') and request.user.corredora:
+                        calificacion.corredora = request.user.corredora
+                    
+                    calificacion.save()
+                    messages.success(request, f'Calificación creada para {nombre_instrumento}.')
+                    return redirect('calificaciones:listado')
+                else:
+                    messages.error(request, f'Error al guardar: {form.errors.as_text()}')
+                    return redirect('calificaciones:listado')
+
+        except Exception as e:
+            messages.error(request, f'Error crítico: {str(e)}')
+            return redirect('calificaciones:listado')
+
     else:
         return redirect('calificaciones:listado')
 
@@ -283,7 +362,6 @@ def guardar_lote_ajax(request):
                 nombre_cliente = item.get('instrumento') # Usamos instrumento como fallback de nombre
                 
                 # Buscamos por nombre si no hay RUT, o creamos uno dummy
-                # Ajusta esta lógica según tu modelo estricto de Clientes
                 cliente = None
                 if nombre_cliente:
                     cliente = Cliente.objects.filter(persona_juridica__razon_social__icontains=nombre_cliente).first()
@@ -515,7 +593,7 @@ def corredora_crear(request):
     """
     if request.method == 'POST':
         # Nota: Usamos CorrederaForm según tu archivo forms.py (ojo con el typo 'Corredera' vs 'Corredora')
-        form = CorrederaForm(request.POST)
+        form = CorredoraForm(request.POST)
         if form.is_valid():
             form.save()
             messages.success(request, 'Corredora creada exitosamente.')

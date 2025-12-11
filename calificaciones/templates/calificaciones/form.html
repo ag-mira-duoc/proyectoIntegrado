@@ -28,56 +28,58 @@
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6">
-                                    {{ form.cliente|as_crispy_field }}
+                                    {{ form.instrumento|as_crispy_field }}
                                 </div>
                                 <div class="col-md-6">
                                     {{ form.anno|as_crispy_field }}
                                 </div>
                             </div>
+
                             <div class="row">
+                                <div class="col-md-8">
+                                    {{ form.cliente|as_crispy_field }}
+                                </div>
                                 <div class="col-md-4">
                                     {{ form.mercado|as_crispy_field }}
                                 </div>
-                                <div class="col-md-4">
-                                    {{ form.instrumento|as_crispy_field }}
-                                </div>
+                            </div>
+
+                            <div class="row">
                                 <div class="col-md-4">
                                     {{ form.fecha_pago|as_crispy_field }}
                                 </div>
-                            </div>
-                            <div class="row">
                                 <div class="col-md-4">
                                     {{ form.secuencia_evento|as_crispy_field }}
                                 </div>
+                                <div class="col-md-4">
+                                    {{ form.tipo_sociedad|as_crispy_field }}
+                                </div>
+                            </div>
+
+                            <div class="row">
                                 <div class="col-md-4">
                                     {{ form.dividendo|as_crispy_field }}
                                 </div>
                                 <div class="col-md-4">
                                     {{ form.factor_actualizacion|as_crispy_field }}
                                 </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     {{ form.valor_historico|as_crispy_field }}
                                 </div>
-                                <div class="col-md-6">
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-12">
                                     {{ form.descripcion|as_crispy_field }}
                                 </div>
                             </div>
+
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="form-check form-switch mt-3">
                                         {{ form.isfut }}
                                         <label class="form-check-label" for="{{ form.isfut.id_for_label }}">
-                                            Aplica ISFUT (Impuesto de Primera Categoría)
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-check form-switch mt-3">
-                                        {{ form.ingreso_montos }}
-                                        <label class="form-check-label" for="{{ form.ingreso_montos.id_for_label }}">
-                                            Montos Ingresados
+                                            ISFUT
                                         </label>
                                     </div>
                                 </div>

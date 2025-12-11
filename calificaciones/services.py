@@ -215,7 +215,7 @@ def procesar_archivo_pdf(archivo_memoria):
     print(f"{'='*70}")
     
     response_data = {
-        'ejercicio': '', 'mercado': 'ACN', 'instrumento': '', 
+        'ejercicio': '', 'mercado': 'AC', 'instrumento': '', 
         'fecha_pago': '', 'secuencia': '',
         'valor_historico': '0', 'factor_actualizacion': '0', 'numero_dividendo': '0',      
         'factores': {}

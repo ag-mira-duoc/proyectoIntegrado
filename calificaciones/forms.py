@@ -1,14 +1,32 @@
-"""
-Formularios para la app calificaciones.
-"""
 from django import forms
 from django.core.exceptions import ValidationError
 from .models import Calificacion, Cliente, PersonaNatural, PersonaJuridica, Corredora
+from decimal import Decimal
+
+# --- WIDGET PERSONALIZADO PARA CORREGIR 0E-8 ---
+class DecimalInput(forms.NumberInput):
+    """
+    Widget que fuerza el formato decimal fijo (ej: 0.00000000) 
+    evitando la notación científica (0E-8) al renderizar.
+    """
+    def __init__(self, precision=8, *args, **kwargs):
+        self.precision = precision
+        super().__init__(*args, **kwargs)
+
+    def format_value(self, value):
+        if value is None or value == '':
+            return ''
+        try:
+            # Convertimos a float primero para eliminar la notación científica (Decimal('0E-8') -> 0.0)
+            val_float = float(value)
+            # Formateamos con la precisión deseada
+            return "{:.{}f}".format(val_float, self.precision)
+        except (ValueError, TypeError):
+            return str(value)
 
 class CalificacionForm(forms.ModelForm):
     """
     Formulario para crear/editar calificaciones tributarias.
-    Incluye todos los 30 factores del formulario 1851 SII.
     """
     class Meta:
         model = Calificacion
@@ -25,42 +43,80 @@ class CalificacionForm(forms.ModelForm):
             'factor28', 'factor29', 'factor30', 'factor31', 'factor32',
             'factor33', 'factor34', 'factor35', 'factor36', 'factor37',
         ]
+        
+        labels = {
+            'cliente': 'Rut',
+        }
+        
+        help_texts = {
+            'factor_actualizacion': '',
+        }
+
+        # Asignamos el Widget DecimalInput a los campos problemáticos
         widgets = {
             'cliente': forms.Select(attrs={'class': 'form-select'}),
             'anno': forms.NumberInput(attrs={'class': 'form-control'}),
             'mercado': forms.Select(attrs={'class': 'form-select'}),
             'instrumento': forms.TextInput(attrs={'class': 'form-control'}),
-            'fecha_pago': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            
+            # FECHA: Mantenemos la corrección que ya funciona
+            'fecha_pago': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'class': 'form-control', 'type': 'date'}
+            ),
+            
             'tipo_sociedad': forms.Select(attrs={'class': 'form-select'}),
             'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'estado': forms.Select(attrs={'class': 'form-select'}),
             'isfut': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            
+            # DECIMALES: Usamos el nuevo widget
+            'dividendo': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            
+            # Factor actualización (6 decimales según modelo)
+            'factor_actualizacion': DecimalInput(
+                precision=6, 
+                attrs={'class': 'form-control', 'step': '0.000001'}
+            ),
+            
+            # Valor histórico (8 decimales)
+            'valor_historico': DecimalInput(
+                precision=8, 
+                attrs={'class': 'form-control', 'step': '0.00000001'}
+            ),
         }
         
-        # Agregar clases a todos los campos de factores e inputs numéricos
-        labels = {}
+        # Aplicar DecimalInput a los 30 factores (8 decimales)
         for i in range(8, 38):
-            widgets[f'factor{i}'] = forms.NumberInput(attrs={'class': 'form-control', 'step': '0.00000001'})
+            widgets[f'factor{i}'] = DecimalInput(
+                precision=8, 
+                attrs={'class': 'form-control', 'step': '0.00000001'}
+            )
 
     def __init__(self, *args, **kwargs):
-        # 1. Extraemos 'user' de los argumentos antes de llamar a super()
-        # Esto soluciona el TypeError: unexpected keyword argument 'user'
         self.user = kwargs.pop('user', None)
-        
-        # 2. Llamamos al init original sin el argumento 'user'
         super().__init__(*args, **kwargs)
         
-        # 3. Lógica personalizada
-        # Si el usuario no es administrador, filtrar clientes por su corredora
+        # Filtro de clientes
         if self.user and not (self.user.is_superuser or getattr(self.user, 'es_administrador', lambda: False)()):
             if hasattr(self.user, 'corredora') and self.user.corredora:
-                self.fields['cliente'].queryset = Cliente.objects.filter(activo=True) # Podrías filtrar por corredora si el modelo Cliente lo permite
+                self.fields['cliente'].queryset = Cliente.objects.filter(activo=True)
         
-        # Help texts y configuraciones visuales
         self.fields['anno'].widget.attrs['placeholder'] = 'YYYY'
         self.fields['secuencia_evento'].required = False
         self.fields['numero_dividendo'].required = False
 
+        if self.instance.pk:
+            # 1. FECHA PAGO: Corrección para el value del input date
+            if self.instance.fecha_pago:
+                self.fields['fecha_pago'].initial = self.instance.fecha_pago.strftime('%Y-%m-%d')
+
+            # 2. NULLS A CEROS (Opcional, el widget manejará el display, pero esto asegura valor en form)
+            if self.instance.dividendo is None:
+                self.fields['dividendo'].initial = 0
+            
+            if self.instance.factor_actualizacion is None:
+                self.fields['factor_actualizacion'].initial = 0
 
 class ClienteForm(forms.ModelForm):
     """Formulario base para Cliente"""
@@ -94,7 +150,7 @@ class PersonaJuridicaForm(forms.ModelForm):
             'domicilio_tributario': forms.TextInput(attrs={'class': 'form-control'}),
         }
 
-class CorrederaForm(forms.ModelForm):
+class CorredoraForm(forms.ModelForm):
     """Formulario para crear/editar corredoras"""
     class Meta:
         model = Corredora
