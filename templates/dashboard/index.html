@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - NUAM{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Dashboard</h1>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6 col-lg-5 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold"><i class="bi bi-calculator"></i> Gestión Tributaria</h6>
+                </div>
+            </div>
+            <div class="card-body text-center d-flex flex-column justify-content-center">
+                <p class="card-text text-muted mb-4">Acceda al mantenedor de calificaciones para gestionar, ingresar y auditar registros tributarios.</p>
+                <a href="{% url 'calificaciones:listado' %}" class="btn btn-primary btn-lg w-100">
+                    <i class="bi bi-arrow-right-circle me-2"></i> Ir a Calificaciones Tributarias
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-toolbar d-flex justify-content-between align-items-center">
+        <div class="d-flex gap-2">
+            </div>
+
+        <div class="d-flex gap-2">
+            
+            {% if user.is_superuser or user.es_administrador or user.es_auditor %}
+                <a href="{% url 'auditoria:exportar_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success btn-toolbar-custom text-decoration-none pt-2">
+                    <i class="bi bi-file-earmark-excel"></i> EXPORTAR LOGS
+                </a>
+            {% endif %}
+            
+            <button type="button" class="btn btn-outline-secondary btn-toolbar-custom">
+                OPCIONES
+            </button>
+        </div>
+    </div>
+
+    {% if user.is_staff or user.es_administrador %}
+    <div class="col-md-6 col-lg-5 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-dark text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold"><i class="bi bi-shield-lock"></i> Administración</h6>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'clientes:listado' %}" class="btn btn-outline-secondary text-start">
+                        <i class="bi bi-people me-2"></i> Gestión de Clientes
+                    </a>
+                    {% if user.is_superuser %}
+                    <a href="{% url 'usuarios:listado' %}" class="btn btn-outline-secondary text-start">
+                        <i class="bi bi-person-badge me-2"></i> Gestión de Usuarios
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

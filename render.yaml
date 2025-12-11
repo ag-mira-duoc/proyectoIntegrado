@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: nuam-web
+    env: docker 
+    plan: free
+    region: oregon
+    
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: 'false'
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nuam-db
+          property: connectionString
+
+databases:
+  - name: nuam-db
+    databaseName: nuam_production
+    user: nuam_user
+    plan: free
+    region: oregon

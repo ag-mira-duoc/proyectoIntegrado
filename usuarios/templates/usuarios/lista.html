@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Usuarios - NUAM{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-people"></i> Gestión de Usuarios</h1>
+</div>
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr><th>Nombre</th><th>Email</th><th>RUT</th><th>Roles</th><th>Corredora</th><th>Estado</th><th>Acciones</th></tr>
+        </thead>
+        <tbody>
+            {% for u in usuarios %}
+            <tr>
+                <td>{{ u.get_full_name }}</td>
+                <td>{{ u.email }}</td>
+                <td>{{ u.rut }}</td>
+                <td>
+                    {% for grupo in u.groups.all %}
+                        <span class="badge bg-primary">{{ grupo.name }}</span>
+                    {% empty %}
+                        <span class="text-muted">Sin rol</span>
+                    {% endfor %}
+                </td>
+                <td>{{ u.corredora.nombre|default:"-" }}</td>
+                <td>
+                    {% if u.is_active %}<span class="badge bg-success">Activo</span>
+                    {% else %}<span class="badge bg-danger">Inactivo</span>{% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'usuarios:detalle' u.pk %}" class="btn btn-sm btn-info"><i class="bi bi-eye"></i></a>
+                    <a href="{% url 'usuarios:editar' u.pk %}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Usuario {{ usuario_detalle.get_full_name }} - NUAM{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">{{ usuario_detalle.get_full_name }}</h1>
+    <div>
+        <a href="{% url 'usuarios:editar' usuario_detalle.pk %}" class="btn btn-warning me-2"><i class="bi bi-pencil"></i> Editar</a>
+        <a href="{% url 'usuarios:listado' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Volver</a>
+    </div>
+</div>
+<div class="card">
+    <div class="card-body">
+        <table class="table">
+            <tr><th>Email:</th><td>{{ usuario_detalle.email }}</td></tr>
+            <tr><th>RUT:</th><td>{{ usuario_detalle.rut }}</td></tr>
+            <tr><th>Nombre:</th><td>{{ usuario_detalle.nombre }}</td></tr>
+            <tr><th>Apellido:</th><td>{{ usuario_detalle.apellido }}</td></tr>
+            <tr><th>Roles:</th><td>
+                {% for grupo in usuario_detalle.groups.all %}
+                    <span class="badge bg-primary">{{ grupo.name }}</span>
+                {% empty %}
+                    <span class="text-muted">Sin rol asignado</span>
+                {% endfor %}
+            </td></tr>
+            <tr><th>Corredora:</th><td>{{ usuario_detalle.corredora.nombre|default:"-" }}</td></tr>
+            <tr><th>Staff:</th><td>{% if usuario_detalle.is_staff %}Sí{% else %}No{% endif %}</td></tr>
+            <tr><th>Activo:</th><td>{% if usuario_detalle.is_active %}Sí{% else %}No{% endif %}</td></tr>
+            <tr><th>Fecha registro:</th><td>{{ usuario_detalle.date_joined|date:"d/m/Y H:i" }}</td></tr>
+            <tr><th>Último login:</th><td>{{ usuario_detalle.last_login|date:"d/m/Y H:i"|default:"-" }}</td></tr>
+        </table>
+    </div>
+</div>
+{% endblock %}

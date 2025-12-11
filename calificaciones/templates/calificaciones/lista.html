@@ -1,0 +1,1069 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Gestión de Calificaciones - NUAM{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* --- ESTILOS TABLA PRINCIPAL --- */
+    .table-responsive {
+        overflow-x: auto;
+        max-height: 65vh;
+    }
+    .table th, .table td {
+        white-space: nowrap;
+        vertical-align: middle;
+        font-size: 0.85rem;
+        cursor: pointer;
+    }
+    
+    /* --- ESTILOS PARA REDIMENSIONAR COLUMNAS --- */
+    .table-resizable th {
+        position: relative;
+        cursor: col-resize;
+        user-select: none;
+    }
+    
+    .resizer {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 5px;
+        cursor: col-resize;
+        user-select: none;
+        height: 100%;
+    }
+    
+    .resizer:hover, 
+    .resizing {
+        border-right: 2px solid #0d6efd;
+    }
+
+   /* --- Columnas Normales (Ya no son fijas/sticky) --- */
+    .col-fixed-1 { 
+        width: 80px;        
+        min-width: 80px;
+        background-color: #fff; 
+        border-right: 1px solid #dee2e6; 
+    }
+    
+    .col-fixed-2 { 
+        width: 250px;       /* Ancho amplio para leer el nombre completo */
+        min-width: 250px;
+        background-color: #fff; 
+        border-right: 2px solid #dee2e6; 
+    }
+    
+    /* Nota: Se eliminaron las reglas de z-index para thead porque ya no son necesarias */
+
+    /* --- INDICADOR DE FILA SELECCIONADA --- */
+    .selected-row > td {
+        background-color: #cfe2ff !important; 
+        color: #084298;
+        border-bottom: 1px solid #9ec5fe;
+    }
+
+    .selected-row > td.col-fixed-1,
+    .selected-row > td.col-fixed-2 {
+        background-color: #cfe2ff !important;
+        color: #084298;
+    }
+
+    .table-hover tbody tr:hover td {
+        background-color: #e9ecef;
+    }
+    
+
+    /* --- Estilos Modal Manual --- */
+    .resumen-container { 
+        background-color: #f8f9fa; 
+        border: 1px solid #dee2e6; 
+        border-radius: 6px; 
+        padding: 15px; 
+        margin-bottom: 20px; 
+    }
+    .resumen-label { 
+        font-size: 0.75rem; 
+        color: #6c757d; 
+        font-weight: 600; 
+        text-transform: uppercase; 
+        margin-bottom: 2px; 
+    }
+    .resumen-value { 
+        font-size: 0.95rem; 
+        font-weight: 500; 
+        color: #212529; 
+        background: #fff; 
+        padding: 4px 8px; 
+        border: 1px solid #e9ecef; 
+        border-radius: 4px; 
+        min-height: 30px; 
+    }
+
+    /* --- Barra Inferior --- */
+    .bottom-toolbar {
+        background-color: #e9ecef;
+        border-top: 1px solid #dee2e6;
+        padding: 10px 20px;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+    }
+    @media (min-width: 768px) {
+        .bottom-toolbar { margin-left: 16.66667%; } 
+    }
+    
+    .btn-toolbar-custom {
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        min-width: 110px;
+        border-radius: 0;
+        margin-right: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h5 class="text-primary m-0">
+        <i class="bi bi-table"></i> Mantenedor de Calificaciones 
+        <small class="text-muted ms-2 fs-6">| Usuario: {{ user.get_full_name }}</small>
+    </h5>
+</div>
+
+<div class="card shadow-sm mb-3 bg-light">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label small fw-bold mb-0">Periodo</label>
+                <select name="anno" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    {% for y in years %}
+                    <option value="{{ y }}" {% if request.GET.anno == y|stringformat:"i" %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-3">
+                <label class="form-label small fw-bold mb-0">Origen</label>
+                {% if es_privilegiado %}
+                    <select name="origen" class="form-select form-select-sm">
+                        <option value="">Todos los Usuarios</option>
+                        {% for u in usuarios_list %}
+                        <option value="{{ u.id }}" {% if request.GET.origen == u.id|stringformat:"i" %}selected{% endif %}>
+                            {{ u.get_full_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                {% else %}
+                    <input type="text" class="form-control form-control-sm" value="{{ user.get_full_name }}" disabled>
+                {% endif %}
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label small fw-bold mb-0">Mercado</label>
+                <select name="mercado" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    <option value="AC" {% if request.GET.mercado == "AC" %}selected{% endif %}>Acciones</option>
+                    <option value="CFI" {% if request.GET.mercado == "CFI" %}selected{% endif %}>CFI</option>
+                </select>
+            </div>
+            
+            <div class="col-md-3">
+                <label class="form-label small fw-bold mb-0">Búsqueda</label>
+                <input type="text" name="search" class="form-control form-control-sm" placeholder="Instrumento..." value="{{ request.GET.search|default:'' }}">
+            </div>
+
+            <div class="col-md-2 d-flex gap-1 align-items-end">
+                <button type="submit" class="btn btn-secondary btn-sm flex-grow-1 fw-bold">
+                    <i class="bi bi-search"></i> BUSCAR
+                </button>
+                
+                {% if request.GET.search or request.GET.anno or request.GET.mercado or request.GET.origen %}
+                    <a href="{{ request.path }}" class="btn btn-outline-danger btn-sm" title="Limpiar todos los filtros">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                {% endif %}
+            </div>
+        </form>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-5 pb-5">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered mb-0 table-resizable" id="tablaCalificaciones">
+                <thead class="table-light">
+                    <tr>
+                        <th class="col-fixed-1 text-center">Ejercicio</th>
+                        <th class="col-fixed-2">Instrumento</th>
+                        
+                        <th style="min-width: 100px;">Fec. Pago</th>
+                        
+                        <th class="text-center">Factor Act.</th>
+                        
+                        <th class="text-center">F-8</th><th class="text-center">F-9</th><th class="text-center">F-10</th>
+                        <th class="text-center">F-11</th><th class="text-center">F-12</th><th class="text-center">F-13</th>
+                        <th class="text-center">F-14</th><th class="text-center">F-15</th><th class="text-center">F-16</th>
+                        <th class="text-center">F-17</th><th class="text-center">F-18</th><th class="text-center">F-19</th>
+                        <th class="text-center">F-20</th><th class="text-center">F-21</th><th class="text-center">F-22</th>
+                        <th class="text-center">F-23</th><th class="text-center">F-24</th><th class="text-center">F-25</th>
+                        <th class="text-center">F-26</th><th class="text-center">F-27</th><th class="text-center">F-28</th>
+                        <th class="text-center">F-29</th><th class="text-center">F-30</th><th class="text-center">F-31</th>
+                        <th class="text-center">F-32</th><th class="text-center">F-33</th><th class="text-center">F-34</th>
+                        <th class="text-center">F-35</th><th class="text-center">F-36</th><th class="text-center">F-37</th>
+                        
+                        <th class="text-center bg-warning-subtle">Acogido ISFUT</th>
+                        <th class="text-center bg-light">Origen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in calificaciones %}
+                    <tr data-id="{{ c.pk }}" onclick="seleccionarFila(this)">
+                        <td class="col-fixed-1 text-center fw-bold">{{ c.anno }}</td>
+                        <td class="col-fixed-2 fw-bold text-primary text-truncate" title="{{ c.instrumento }}">
+                            {{ c.instrumento }}
+                        </td>
+                        
+                        <td>{{ c.fecha_pago|date:"d-m-Y" }}</td>
+                        
+                        <td class="text-end">{{ c.factor_actualizacion|default_if_none:0 }}</td>
+                        
+                        <td class="text-end">{{ c.factor8|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor9|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor10|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor11|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor12|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor13|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor14|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor15|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor16|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor17|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor18|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor19|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor20|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor21|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor22|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor23|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor24|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor25|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor26|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor27|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor28|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor29|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor30|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor31|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor32|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor33|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor34|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor35|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor36|default_if_none:0 }}</td>
+                        <td class="text-end">{{ c.factor37|default_if_none:0 }}</td>
+
+                        <td class="text-center fw-bold bg-warning-subtle">
+                            {% if c.isfut %}S{% else %}N{% endif %}
+                        </td>
+                        <td class="text-center bg-light text-nowrap">
+                            {{ c.user.get_full_name }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="45" class="text-center py-4 text-muted">No se encontraron registros.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    {% if is_paginated %}
+    <div class="card-footer bg-white py-2">
+        <nav aria-label="Page navigation">
+            <ul class="pagination pagination-sm justify-content-center mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+                {% endif %}
+                <li class="page-item disabled"><span class="page-link">Pag {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+                {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<div class="bottom-toolbar d-flex justify-content-between align-items-center">
+    <div class="d-flex">
+        <button type="button" class="btn btn-secondary btn-toolbar-custom" data-bs-toggle="modal" data-bs-target="#modalIngresoCalificacion">
+            INGRESAR
+        </button>
+        <button type="button" class="btn btn-outline-dark btn-toolbar-custom" id="btnModificar" disabled onclick="accionModificar()">
+            MODIFICAR
+        </button>
+        <button type="button" class="btn btn-outline-dark btn-toolbar-custom" id="btnEliminar" disabled onclick="accionEliminar()">
+            ELIMINAR
+        </button>
+        <button type="button" class="btn btn-outline-dark btn-toolbar-custom" disabled>
+            COPIAR
+        </button>
+        <button type="button" class="btn btn-outline-dark btn-toolbar-custom" data-bs-toggle="modal" data-bs-target="#modalCargaMasiva">
+            CARGA X FACTOR
+        </button>
+        <a href="{% url 'calificaciones:ingreso_monto' %}" class="btn btn-outline-dark btn-toolbar-custom text-decoration-none pt-2">
+            CARGA X MONTO
+        </a>
+    </div>
+    <div>
+        <button type="button" class="btn btn-outline-secondary btn-toolbar-custom">
+            OPCIONES
+        </button>
+    </div>
+</div>
+
+<div class="modal fade" id="modalIngresoCalificacion" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered"> 
+        <div class="modal-content">
+            <div class="modal-header bg-white border-bottom-0">
+                <h5 class="modal-title text-primary fw-bold" id="modalLabel">
+                    <i class="bi bi-pencil-square me-2"></i>Ingresar Calificación
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <form method="post" action="{% url 'calificaciones:crear' %}" id="formIngreso">
+                {% csrf_token %}
+                <input type="hidden" name="estado" value="BORRADOR">
+
+                <div class="modal-body pt-0">
+                    <div id="step1-datos-basicos">
+                        <div class="container-fluid px-0">
+                            <div class="row g-3">
+                                <div class="col-lg-7">
+                                    <div class="row g-2 align-items-center mb-2">
+                                        <div class="col-3"><label class="fw-bold text-secondary small">Mercado</label></div>
+                                        <div class="col-9">
+                                            <select name="mercado" class="form-select form-select-sm bg-light">
+                                                <option value="AC">Acciones (AC)</option>
+                                                <option value="CFI">CFI</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-2 align-items-center mb-2">
+                                        <div class="col-3"><label class="fw-bold text-secondary small">Instrumento</label></div>
+                                        <div class="col-9">
+                                            <input type="text" name="instrumento" class="form-control form-control-sm bg-warning-subtle" required>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row g-2 align-items-center mb-2">
+                                        <div class="col-3"><label class="fw-bold text-secondary small">RUT</label></div>
+                                        <div class="col-9">
+                                            <input type="text" name="rut_cliente" class="form-control form-control-sm bg-warning-subtle" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-2 align-items-center mb-2">
+                                        <div class="col-3"><label class="fw-bold text-secondary small">Descripción</label></div>
+                                        <div class="col-9">
+                                            <input type="text" name="descripcion" class="form-control form-control-sm bg-warning-subtle">
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-2 align-items-center mb-2">
+                                        <div class="col-3"><label class="fw-bold text-secondary small">Fecha Pago</label></div>
+                                        <div class="col-9">
+                                            <input type="date" name="fecha_pago" class="form-control form-control-sm bg-warning-subtle" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-2 align-items-center mb-2">
+                                        <div class="col-3"><label class="fw-bold text-secondary small">Secuencia Evento</label></div>
+                                        <div class="col-9">
+                                            <input type="number" name="secuencia_evento" class="form-control form-control-sm">
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-2 align-items-center mb-2">
+                                        <div class="col-3"><label class="fw-bold text-secondary small">Dividendo</label></div>
+                                        <div class="col-9">
+                                            <input type="number" step="0.01" name="dividendo" class="form-control form-control-sm" value="0">
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-2 align-items-center mb-2">
+                                        <div class="col-3"><label class="fw-bold text-secondary small">Valor Histórico</label></div>
+                                        <div class="col-9">
+                                            <input type="number" step="0.00000001" name="valor_historico" class="form-control form-control-sm" value="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-5">
+                                    <div class="p-3 bg-light rounded border">
+                                        <div class="mb-3">
+                                            <label class="fw-bold text-secondary small d-block">Factor de Actualización</label>
+                                            <input type="number" step="0.000001" name="factor_actualizacion" class="form-control form-control-sm" value="0">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="fw-bold text-secondary small d-block">Año</label>
+                                            <input type="number" name="anno" class="form-control form-control-sm" value="2025">
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="isfut" id="id_isfut">
+                                            <label class="form-check-label fw-bold small" for="id_isfut">ISFUT</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="step2-factores" style="display: none;">
+                        
+                        <div class="card bg-light border-0 mb-3">
+                            <div class="card-body py-2">
+                                <div class="row g-2 small">
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Mercado</span>
+                                        <strong id="res_mercado" class="bg-white px-2 border rounded d-block"></strong>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Instrumento</span>
+                                        <strong id="res_instrumento" class="bg-white px-2 border rounded d-block"></strong>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Valor Histórico</span>
+                                        <strong id="res_valor_historico" class="bg-white px-2 border rounded d-block"></strong>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Ingreso por Montos</span>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="ingreso_montos_check">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Fecha Pago</span>
+                                        <strong id="res_fecha" class="bg-white px-2 border rounded d-block"></strong>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Evento Capital</span>
+                                        <strong id="res_evento_capital" class="bg-white px-2 border rounded d-block"></strong>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <span class="text-muted d-block">Descripción</span>
+                                        <strong id="res_descripcion" class="bg-white px-2 border rounded d-block text-truncate"></strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="border rounded p-2" style="max-height: 45vh; overflow-y: auto;">
+                            <div class="row g-2">
+                                <script>
+                                    const descripcionesFactores = {
+                                        8: "Monto Afecto IGC y/o IA c/Créd. IDPC desde 01.01.2017",
+                                        9: "Afectos IGC y/o IA c/Créd. IDPC hasta 31.12.2016",
+                                        10: "Afectos IGC y/o IA c/Créd. pago IDPC Voluntario",
+                                        11: "Afectos IGC y/o IA Sin Derecho a Crédito",
+                                        12: "REX - Trib. Cumplida - RAP y Dif. Inicial ex Art. 14 TER A",
+                                        13: "REX - Trib. Cumplida - Otras Rentas Sin Prioridad",
+                                        14: "REX - Trib. Cumplida - Exceso Dist. Desproporcionadas",
+                                        15: "REX - Trib. Cumplida - ISFUT Ley 20.780",
+                                        16: "REX - Rentas hasta 1983 y/o ISFUT Ley 21.210",
+                                        17: "REX - Exentas IGC (Art. 11), Afectas IA",
+                                        18: "REX - Exentas IGC y/o IA",
+                                        19: "Ingresos No Constitutivos de Renta",
+        
+
+                                        20: "ST 2017 - Afectas - No Suj. Rest. hasta 2019 (Sin Dev.)",
+                                        21: "ST 2017 - Afectas - No Suj. Rest. hasta 2019 (Con Dev.)",
+                                        22: "ST 2017 - Afectas - No Suj. Rest. desde 2020 (Sin Dev.)",
+                                        23: "ST 2017 - Afectas - No Suj. Rest. desde 2020 (Con Dev.)",
+                                        24: "ST 2017 - Afectas - Suj. Rest. (Sin Dev.)",
+                                        25: "ST 2017 - Afectas - Suj. Rest. (Con Dev.)",
+                                        26: "ST 2017 - Exentas - Suj. Rest. (Sin Dev.)",
+                                        27: "ST 2017 - Exentas - Suj. Rest. (Con Dev.)",
+                                        28: "ST 2017 - Crédito por IPE",
+        
+                                        29: "ST 2016 - Afectas (Sin Dev.)",
+                                        30: "ST 2016 - Afectas (Con Dev.)",
+                                        31: "ST 2016 - Exentas (Sin Dev.)",
+                                        32: "ST 2016 - Exentas (Con Dev.)",
+                                        33: "ST 2016 - Crédito por IPE",
+
+                                        34: "Créd. Impto. Tasa Adicional, Ex. Art. 21 LIR",
+                                        35: "Tasa Efectiva del Créd. del FUT (TEF)",
+                                        36: "Tasa Efectiva del Créd. del FUNT (TEX)",
+                                        37: "Devolución Capital Art. 17 N°7 LIR"
+                                        };
+                                    
+                                    for(let i=8; i<=37; i++){
+                                        let desc = descripcionesFactores[i] || "Sin Descripción";
+                                        // Usamos text-wrap y lh-sm (line-height small) para que las descripciones largas
+                                        // se acomoden en varias líneas de forma compacta y legible.
+                                        document.write(`
+                                            <div class="col-md-6 mb-2">
+                                                <div class="d-flex align-items-start">
+                                                    <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;" title="${desc}">
+                                                        <strong>F-${i}</strong> ${desc}
+                                                    </label>
+                                                    <div style="width: 35%;">
+                                                        <input type="number" step="0.00000001" name="factor${i}" class="form-control form-control-sm border-secondary-subtle">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `);
+                                    }
+                                </script>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">CANCELAR</button>
+                    
+                    <button type="button" class="btn btn-primary px-4" id="btnSiguiente" onclick="irAPaso2()" style="background-color: #0d4e68; border:none;">
+                        INGRESAR
+                    </button>
+                    
+                    <button type="button" class="btn btn-secondary px-4" id="btnAtras" onclick="irAPaso1()" style="display: none;">
+                        VOLVER
+                    </button>
+                    
+                    <button type="submit" class="btn btn-success px-4" id="btnGuardar" style="display: none;">
+                        GRABAR
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalCargaMasiva" tabindex="-1" aria-labelledby="modalCargaMasivaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalCargaMasivaLabel">Carga Masiva de Factores</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <div class="modal-body">
+                
+                <div id="loading-message" style="display: none;" class="text-center py-5">
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <h5 class="text-primary fw-bold">Procesando Archivo...</h5>
+                    <p class="text-muted small">Esto puede tomar unos segundos mientras la IA analiza el documento.</p>
+                </div>
+
+                <div id="contenedor-lista-carga">
+                    <p class="text-muted">Archivos procesados listos para grabar:</p>
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-bordered table-hover table-sm table-resizable" id="tabla-carga-masiva">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="min-width: 100px;">Ejercicio</th> 
+                                    <th>Mercado</th>
+                                    <th>Fecha Pago</th>
+                                    <th>Secuencia</th>
+                                    <th>Descripción</th>
+                                    <script>
+                                        for(let i=8; i<=37; i++) {
+                                            document.write(`<th style="min-width: 80px;">F-${i}</th>`);
+                                        }
+                                    </script>
+                                    <th>Acogido ISFUT</th>
+                                    <th>Origen</th>
+                                    </tr>
+                            </thead>
+                            <tbody id="tbody-carga-masiva">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="contenedor-previsualizacion" style="display: none;">
+                    <h6 class="border-bottom pb-2 mb-3">Previsualización de extracción de datos</h6>
+                    
+                    <div class="card bg-light mb-3">
+                        <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40%;">Campo</th>
+                                        <th style="width: 60%;">Dato Extraído</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-previsualizacion">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="modal-footer justify-content-between">
+    
+                <div id="footer-left-actions">
+                    <input type="file" id="inputArchivoPDF" accept=".pdf" style="display: none;">
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('inputArchivoPDF').click()">
+                        Seleccionar Archivo
+                    </button>
+                    <span id="nombre-archivo-seleccionado" class="ms-2 text-muted"></span>
+                </div>
+            
+                <div id="footer-right-actions">
+
+                    <div id="botones-vista-lista" class="d-flex gap-2">
+                        <button type="button" class="btn btn-primary" onclick="grabarTodo()">Grabar</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-outline-dark" id="btnVerFormatoMasiva" onclick="accionVerFormatoMasiva()" disabled>Ver Formato</button>
+                    </div>
+                
+                    <div id="botones-vista-preview" style="display: none;">
+                        <div id="controles-nuevo-archivo">
+                            <button type="button" class="btn btn-secondary" onclick="cancelarPrevisualizacion()">Cancelar</button>
+                            <button type="button" class="btn btn-primary" onclick="aceptarCarga()">Aceptar</button>
+                        </div>
+                        <div id="controles-revision-archivo" style="display: none;">
+                            <button type="button" class="btn btn-primary" onclick="volverALista()">Volver al listado</button>
+                        </div>
+                    </div>
+                </div>
+
+                <form style="display:none;">{% csrf_token %}</form>
+            </div>
+                
+                <form style="display:none;">{% csrf_token %}</form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // --- 1. SCRIPT DE REDIMENSIONAMIENTO DE COLUMNAS ---
+    document.addEventListener('DOMContentLoaded', function() {
+        initResizableTables();
+        const observer = new MutationObserver(function(mutations) {
+            initResizableTables();
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    });
+
+    function initResizableTables() {
+        const tables = document.querySelectorAll('.table-resizable');
+        tables.forEach(table => {
+            const cols = table.querySelectorAll('th');
+            cols.forEach(col => {
+                if (col.querySelector('.resizer')) return;
+                const resizer = document.createElement('div');
+                resizer.classList.add('resizer');
+                resizer.style.height = `${table.offsetHeight}px`; 
+                col.appendChild(resizer);
+                createResizableColumn(col, resizer);
+            });
+        });
+    }
+
+    function createResizableColumn(col, resizer) {
+        let x = 0; let w = 0;
+        const mouseDownHandler = function(e) {
+            x = e.clientX;
+            const styles = window.getComputedStyle(col);
+            w = parseInt(styles.width, 10);
+            document.addEventListener('mousemove', mouseMoveHandler);
+            document.addEventListener('mouseup', mouseUpHandler);
+            resizer.classList.add('resizing');
+        };
+        const mouseMoveHandler = function(e) {
+            const dx = e.clientX - x;
+            col.style.width = `${w + dx}px`;
+        };
+        const mouseUpHandler = function() {
+            document.removeEventListener('mousemove', mouseMoveHandler);
+            document.removeEventListener('mouseup', mouseUpHandler);
+            resizer.classList.remove('resizing');
+        };
+        resizer.addEventListener('mousedown', mouseDownHandler);
+    }
+
+    // --- 2. JS MANTENEDOR PRINCIPAL ---
+    let selectedId = null;
+
+    function seleccionarFila(fila) {
+        document.querySelectorAll('#tablaCalificaciones tr.selected-row').forEach(tr => {
+            tr.classList.remove('selected-row');
+        });
+        fila.classList.add('selected-row');
+        selectedId = fila.getAttribute('data-id');
+        document.getElementById('btnModificar').disabled = false;
+        document.getElementById('btnEliminar').disabled = false;
+    }
+
+    function accionModificar() {
+        if (selectedId) window.location.href = `/calificaciones/${selectedId}/editar/`;
+    }
+
+    function accionEliminar() {
+        if (selectedId && confirm('¿Esta seguro de eliminar esta calificacion?')) {
+            window.location.href = `/calificaciones/${selectedId}/eliminar/`;
+        }
+    }
+
+    // --- 3. JS DEL MODAL CARGA MASIVA (AJAX) ---
+    let datosTemporales = {}; 
+    let listaParaGrabar = [];
+    let selectedIndexMasiva = null; 
+
+    document.getElementById('inputArchivoPDF').addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            let file = e.target.files[0];
+            document.getElementById('nombre-archivo-seleccionado').innerText = file.name;
+            procesarArchivo(file);
+        }
+    });
+
+    // --- NUEVA FUNCION ROBUSTA PARA CONTROLAR VISIBILIDAD ---
+    function actualizarEstadoModal(estado) {
+        // Contenedores Principales
+        const loadingDiv = document.getElementById('loading-message');
+        const listaDiv = document.getElementById('contenedor-lista-carga');
+        const previewDiv = document.getElementById('contenedor-previsualizacion');
+
+        // Secciones del Footer
+        const footerLeft = document.getElementById('footer-left-actions');
+        const footerRightList = document.getElementById('botones-vista-lista');
+        const footerRightPreview = document.getElementById('botones-vista-preview');
+
+        // Sub-controles de Preview
+        const ctrlsNuevo = document.getElementById('controles-nuevo-archivo');
+        const ctrlsRevision = document.getElementById('controles-revision-archivo');
+
+        // 1. Ocultar todo por defecto (Reset agresivo)
+        loadingDiv.style.display = 'none';
+        listaDiv.style.display = 'none';
+        previewDiv.style.display = 'none';
+        
+        footerLeft.style.display = 'none';
+        
+        // AQUÍ ESTÁ EL CAMBIO CLAVE:
+        // Para ocultar elementos con d-flex, debemos quitar la clase d-flex y poner d-none
+        footerRightList.classList.remove('d-flex');
+        footerRightList.classList.add('d-none');
+        
+        footerRightPreview.style.display = 'none';
+        
+        ctrlsNuevo.style.display = 'none';
+        ctrlsRevision.style.display = 'none';
+
+        // 2. Activar segun estado
+        if (estado === 'cargando') {
+            // SOLO mensaje de carga. NINGUN boton visible.
+            loadingDiv.style.display = 'block';
+        } 
+        else if (estado === 'lista') {
+            // Ver Lista + Boton Seleccionar Archivo + Botones Grabar/Cancelar/Ver
+            listaDiv.style.display = 'block';
+            footerLeft.style.display = 'block';
+            
+            // Restaurar d-flex para que se vean los botones alineados
+            footerRightList.classList.remove('d-none');
+            footerRightList.classList.add('d-flex');
+        } 
+        else if (estado === 'preview_nuevo') {
+            // Ver Preview + Botones Aceptar/Cancelar
+            previewDiv.style.display = 'block';
+            footerRightPreview.style.display = 'block';
+            ctrlsNuevo.style.display = 'block';
+        } 
+        else if (estado === 'preview_revision') {
+            // Ver Preview + Boton Volver
+            previewDiv.style.display = 'block';
+            footerRightPreview.style.display = 'block';
+            ctrlsRevision.style.display = 'block';
+        }
+    }
+
+    function procesarArchivo(file) {
+        // 1. UI: Estado Cargando (Sin botones)
+        actualizarEstadoModal('cargando');
+        
+        console.log("Subiendo archivo al backend...");
+        
+        let formData = new FormData();
+        formData.append('archivo_pdf', file);
+        
+        let tokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
+        const csrftoken = tokenInput ? tokenInput.value : '';
+
+        fetch('/calificaciones/api/extraer-pdf/', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-CSRFToken': csrftoken }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.error) {
+                alert("Error del sistema: " + data.error);
+                actualizarEstadoModal('lista');
+            } else {
+                mostrarPrevisualizacion(data, false);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("Error de conexión con el servidor.");
+            actualizarEstadoModal('lista');
+        });
+    }
+
+    function mostrarPrevisualizacion(datos, esRevision) {
+        datosTemporales = datos; 
+        const tbody = document.getElementById('tbody-previsualizacion');
+        tbody.innerHTML = '';
+
+        const addRow = (campo, dato) => {
+            tbody.innerHTML += `<tr><td><strong>${campo}</strong></td><td>${dato || '-'}</td></tr>`;
+        };
+
+        addRow('Ejercicio', datos.ejercicio);
+        addRow('Mercado', datos.mercado);
+        addRow('Instrumento', datos.instrumento);
+        addRow('Fecha Pago', datos.fecha_pago);
+        addRow('Secuencia Evento', datos.secuencia);
+
+        for(let i=8; i<=37; i++) {
+            let f = datos.factores && datos.factores[i] ? datos.factores[i] : {desc:'Factor '+i, valor:'0'}; 
+            addRow(`F-${i} ${f.desc}`, f.valor);
+        }
+
+        if (esRevision) {
+            actualizarEstadoModal('preview_revision');
+        } else {
+            actualizarEstadoModal('preview_nuevo');
+        }
+    }
+
+    function cancelarPrevisualizacion() {
+        datosTemporales = {};
+        actualizarEstadoModal('lista');
+        
+        // Limpiar inputs
+        document.getElementById('inputArchivoPDF').value = '';
+        document.getElementById('nombre-archivo-seleccionado').innerText = '';
+    }
+
+    function volverALista() {
+        actualizarEstadoModal('lista');
+    }
+
+    function aceptarCarga() {
+        let f15 = 0; let f16 = 0;
+        if(datosTemporales.factores) {
+            f15 = parseFloat(datosTemporales.factores[15]?.valor_decimal || 0);
+            f16 = parseFloat(datosTemporales.factores[16]?.valor_decimal || 0);
+        }
+        let acogidoISFUT = (f15 !== 0 || f16 !== 0) ? 'S' : 'N';
+        
+        // --- CAMBIO AQUÍ ---
+        // Usamos comillas para que sea un string de JS, pero adentro ponemos el tag de Django
+        let origen = "{{ user.get_full_name|default:user.email }}";
+        // -------------------
+
+        datosTemporales.acogidoISFUT = acogidoISFUT;
+        datosTemporales.origen = origen; // Esto es solo para mostrarlo en la tabla visualmente
+
+        listaParaGrabar.push(datosTemporales);
+        renderizarTablaPrincipal();
+        
+        // Volver a la lista, limpiando selección
+        actualizarEstadoModal('lista');
+        document.getElementById('inputArchivoPDF').value = '';
+        document.getElementById('nombre-archivo-seleccionado').innerText = '';
+    }
+
+    function renderizarTablaPrincipal() {
+        const tbody = document.getElementById('tbody-carga-masiva');
+        tbody.innerHTML = '';
+
+        listaParaGrabar.forEach((item, index) => {
+            let rowHTML = `<tr onclick="seleccionarFilaMasiva(this, ${index})" style="cursor: pointer;">
+                <td class="text-nowrap">
+                    <i class="fas fa-times-circle text-danger me-2" style="cursor:pointer;" onclick="event.stopPropagation(); eliminarFila(${index})" title="Eliminar"></i>
+                    ${item.ejercicio}
+                </td>
+                <td>${item.mercado}</td>
+                <td>${item.fecha_pago}</td>
+                <td>${item.secuencia}</td>
+                <td></td>`; 
+
+            for(let i=8; i<=37; i++) {
+                let val = (item.factores && item.factores[i]) ? item.factores[i].valor_decimal : '0';
+                rowHTML += `<td>${val}</td>`;
+            }
+
+            rowHTML += `
+                <td>${item.acogidoISFUT}</td>
+                <td>${item.origen}</td>
+            </tr>`;
+            
+            tbody.insertAdjacentHTML('beforeend', rowHTML);
+        });
+        
+        initResizableTables();
+    }
+
+    function seleccionarFilaMasiva(row, index) {
+        document.querySelectorAll('#tbody-carga-masiva tr').forEach(r => r.classList.remove('selected-row'));
+        row.classList.add('selected-row');
+        selectedIndexMasiva = index;
+        document.getElementById('btnVerFormatoMasiva').disabled = false;
+    }
+
+    function accionVerFormatoMasiva() {
+        if (selectedIndexMasiva !== null && listaParaGrabar[selectedIndexMasiva]) {
+            mostrarPrevisualizacion(listaParaGrabar[selectedIndexMasiva], true);
+        }
+    }
+
+    function eliminarFila(index) {
+        if (index === selectedIndexMasiva) {
+            selectedIndexMasiva = null;
+            document.getElementById('btnVerFormatoMasiva').disabled = true;
+        } else if (selectedIndexMasiva !== null && index < selectedIndexMasiva) {
+            selectedIndexMasiva--;
+        }
+
+        listaParaGrabar.splice(index, 1);
+        renderizarTablaPrincipal();
+        
+        if (selectedIndexMasiva !== null) {
+             const rows = document.querySelectorAll('#tbody-carga-masiva tr');
+             if(rows[selectedIndexMasiva]) rows[selectedIndexMasiva].classList.add('selected-row');
+        }
+    }
+
+    function grabarTodo() {
+        if(listaParaGrabar.length === 0) {
+            alert("No hay datos para grabar");
+            return;
+        }
+
+        let tokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
+        const csrftoken = tokenInput ? tokenInput.value : '';
+
+        fetch('/calificaciones/api/guardar-lote/', {
+            method: 'POST',
+            body: JSON.stringify(listaParaGrabar),
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.error) {
+                alert("Error al guardar: " + data.error);
+            } else {
+                alert(data.mensaje);
+                location.reload(); 
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+    
+    // JS DEL MODAL INGRESO MANUAL ORIGINAL
+    document.addEventListener("DOMContentLoaded", function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('action') === 'ingresar') {
+            var myModalEl = document.getElementById('modalIngresoCalificacion');
+            if (myModalEl) {
+                var modal = new bootstrap.Modal(myModalEl);
+                modal.show();
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+    });
+    
+    // Funciones del paso a paso manual
+    function irAPaso2() {
+        const form = document.getElementById('formIngreso');
+        
+        // Validar campos requeridos del Paso 1
+        // Nota: 'dividendo' ahora es 'Evento Capital' visualmente
+        const inputs = form.querySelectorAll('#step1-datos-basicos input[required], #step1-datos-basicos select[required]');
+        let valid = true;
+        inputs.forEach(i => {
+            if (!i.value) { 
+                i.classList.add('is-invalid'); 
+                valid = false; 
+            } else { 
+                i.classList.remove('is-invalid'); 
+            }
+        });
+
+        if (!valid) {
+            alert("Por favor complete los campos obligatorios (RUT, Instrumento, Fecha, Año).");
+            return;
+        }
+
+        // Mapeo de valores para el Resumen del Paso 2
+        const mercadoSelect = form.querySelector('select[name="mercado"]');
+        
+        // 1. Mercado
+        document.getElementById('res_mercado').textContent = mercadoSelect.options[mercadoSelect.selectedIndex].text;
+        
+        // 2. Instrumento (Ahora es el input de texto)
+        document.getElementById('res_instrumento').textContent = form.querySelector('input[name="instrumento"]').value;
+        
+        // 3. Valor Histórico
+        document.getElementById('res_valor_historico').textContent = form.querySelector('input[name="valor_historico"]').value || '0.00';
+        
+        // 4. Fecha Pago
+        document.getElementById('res_fecha').textContent = form.querySelector('input[name="fecha_pago"]').value;
+        
+        // 5. Evento Capital (Input name="dividendo")
+        document.getElementById('res_evento_capital').textContent = form.querySelector('input[name="dividendo"]').value || '0.00';
+        
+        // 6. Descripción
+        document.getElementById('res_descripcion').textContent = form.querySelector('input[name="descripcion"]').value || '-';
+
+        // Cambio de Visibilidad
+        document.getElementById('step1-datos-basicos').style.display = 'none';
+        document.getElementById('step2-factores').style.display = 'block';
+        
+        // Cambio de Botones
+        document.getElementById('btnSiguiente').style.display = 'none';
+        document.getElementById('btnAtras').style.display = 'inline-block';
+        document.getElementById('btnGuardar').style.display = 'inline-block';
+        
+        // Cambiar titulo del modal
+        document.getElementById('modalLabel').innerText = "UI_INGRESO_CALIFICACIONES_TRIBUTARIAS";
+    }
+
+    function irAPaso1() {
+        document.getElementById('step1-datos-basicos').style.display = 'block';
+        document.getElementById('step2-factores').style.display = 'none';
+        
+        document.getElementById('btnSiguiente').style.display = 'inline-block';
+        document.getElementById('btnAtras').style.display = 'none';
+        document.getElementById('btnGuardar').style.display = 'none';
+        
+        document.getElementById('modalLabel').innerHTML = '<i class="bi bi-pencil-square me-2"></i>Ingresar Calificación';
+    }
+</script>
+{% endblock %}

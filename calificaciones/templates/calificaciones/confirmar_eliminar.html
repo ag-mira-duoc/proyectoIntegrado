@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %}Confirmar Eliminación - NUAM{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card shadow border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Confirmar Eliminación</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-danger fw-bold">¿Está seguro de eliminar esta calificación?</p>
+                
+                <div class="alert alert-warning">
+                    <strong>Advertencia:</strong> Esta acción no se puede deshacer.
+                </div>
+                
+                <table class="table table-bordered">
+                    <tr>
+                        <th>ID:</th>
+                        <td>{{ calificacion.id }}</td>
+                    </tr>
+                    <tr>
+                        <th>Cliente:</th>
+                        <td>{{ calificacion.cliente.get_nombre_completo }}</td>
+                    </tr>
+                    <tr>
+                        <th>Año:</th>
+                        <td>{{ calificacion.anno }}</td>
+                    </tr>
+                    <tr>
+                        <th>Estado:</th>
+                        <td>{{ calificacion.get_estado_display }}</td>
+                    </tr>
+                </table>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'calificaciones:detalle' calificacion.pk %}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Eliminar Definitivamente
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

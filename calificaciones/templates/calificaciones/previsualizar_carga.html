@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Previsualización de Carga - NUAM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .table-responsive {
+        overflow-x: auto;
+        max-height: 60vh; /* Scroll vertical para tablas largas */
+    }
+    .table th, .table td {
+        white-space: nowrap;
+        vertical-align: middle;
+        font-size: 0.85rem;
+    }
+    /* Encabezado fijo */
+    .table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background-color: #f8f9fa; /* Color bg-light */
+        box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.4);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="text-primary m-0">
+            <i class="bi bi-file-earmark-pdf"></i> Previsualización de Datos Extraídos
+        </h3>
+        <span class="badge bg-secondary fs-6">Certificado Detectado: {{ resultado.tipo }}</span>
+    </div>
+    
+    <div class="alert alert-info shadow-sm mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-3">
+                <i class="bi bi-building me-2"></i> <strong>RUT Emisor:</strong><br> 
+                {{ resultado.metadata.rut_emisor|default:"No detectado" }}
+            </div>
+            <div class="col-md-3">
+                <i class="bi bi-calendar-event me-2"></i> <strong>Año Comercial:</strong><br> 
+                {{ resultado.metadata.anno }}
+            </div>
+            <div class="col-md-3">
+                <i class="bi bi-list-ol me-2"></i> <strong>Registros:</strong><br> 
+                {{ resultado.filas|length }} filas encontradas
+            </div>
+            <div class="col-md-3 text-end">
+                <small class="text-muted">Revise los datos antes de confirmar.</small>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" action="{% url 'calificaciones:confirmar_carga' %}">
+        {% csrf_token %}
+        
+        <div class="card shadow mb-4">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover table-sm small mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-center">#</th>
+                                <th style="min-width: 100px;">Fecha Pago</th>
+                                <th style="min-width: 150px;">Instrumento</th>
+                                <th class="text-center table-info">Fact. Act.</th>
+                                
+                                <th class="text-center">F-8</th><th class="text-center">F-9</th><th class="text-center">F-10</th>
+                                <th class="text-center">F-11</th><th class="text-center">F-12</th><th class="text-center">F-13</th>
+                                <th class="text-center">F-14</th><th class="text-center">F-15</th><th class="text-center">F-16</th>
+                                <th class="text-center">F-17</th><th class="text-center">F-18</th><th class="text-center">F-19</th>
+                                <th class="text-center">F-20</th><th class="text-center">F-21</th><th class="text-center">F-22</th>
+                                <th class="text-center">F-23</th><th class="text-center">F-24</th><th class="text-center">F-25</th>
+                                <th class="text-center">F-26</th><th class="text-center">F-27</th><th class="text-center">F-28</th>
+                                <th class="text-center">F-29</th><th class="text-center">F-30</th><th class="text-center">F-31</th>
+                                <th class="text-center">F-32</th><th class="text-center">F-33</th><th class="text-center">F-34</th>
+                                <th class="text-center">F-35</th><th class="text-center">F-36</th><th class="text-center">F-37</th>
+                                
+                                <th class="text-center bg-warning-subtle">ISFUT</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for fila in resultado.filas %}
+                            <tr>
+                                <td class="text-center text-muted bg-light">{{ forloop.counter }}</td>
+                                
+                                <td>{{ fila.fecha_pago }}</td>
+                                <td class="fw-bold text-primary">{{ fila.instrumento|default:"-" }}</td>
+                                <td class="text-end table-info fw-bold">{{ fila.factor_actualizacion }}</td>
+                                
+                                <td class="text-end">{{ fila.factor8 }}</td><td class="text-end">{{ fila.factor9 }}</td><td class="text-end">{{ fila.factor10 }}</td>
+                                <td class="text-end">{{ fila.factor11 }}</td><td class="text-end">{{ fila.factor12 }}</td><td class="text-end">{{ fila.factor13 }}</td>
+                                <td class="text-end">{{ fila.factor14 }}</td><td class="text-end">{{ fila.factor15 }}</td><td class="text-end">{{ fila.factor16 }}</td>
+                                <td class="text-end">{{ fila.factor17 }}</td><td class="text-end">{{ fila.factor18 }}</td><td class="text-end">{{ fila.factor19 }}</td>
+                                <td class="text-end">{{ fila.factor20 }}</td><td class="text-end">{{ fila.factor21 }}</td><td class="text-end">{{ fila.factor22 }}</td>
+                                <td class="text-end">{{ fila.factor23 }}</td><td class="text-end">{{ fila.factor24 }}</td><td class="text-end">{{ fila.factor25 }}</td>
+                                <td class="text-end">{{ fila.factor26 }}</td><td class="text-end">{{ fila.factor27 }}</td><td class="text-end">{{ fila.factor28 }}</td>
+                                <td class="text-end">{{ fila.factor29 }}</td><td class="text-end">{{ fila.factor30 }}</td><td class="text-end">{{ fila.factor31 }}</td>
+                                <td class="text-end">{{ fila.factor32 }}</td><td class="text-end">{{ fila.factor33 }}</td><td class="text-end">{{ fila.factor34 }}</td>
+                                <td class="text-end">{{ fila.factor35 }}</td><td class="text-end">{{ fila.factor36 }}</td><td class="text-end">{{ fila.factor37 }}</td>
+
+                                <td class="text-center">
+                                    {% if fila.isfut %}
+                                        <span class="badge bg-success">SI</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="40" class="text-center py-5 text-muted">
+                                    <i class="bi bi-exclamation-circle display-4 d-block mb-3"></i>
+                                    No se pudieron extraer datos válidos del archivo.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="card-footer bg-light">
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle-fill text-primary"></i> 
+                        Los registros se guardarán con estado <strong>BORRADOR</strong> y podrán ser editados posteriormente.
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mb-5">
+            <a href="{% url 'calificaciones:carga_masiva' %}" class="btn btn-outline-secondary btn-lg px-4">
+                <i class="bi bi-x-lg"></i> Cancelar
+            </a>
+            <button type="submit" class="btn btn-success btn-lg px-4 shadow-sm" {% if not resultado.filas %}disabled{% endif %}>
+                <i class="bi bi-check-lg"></i> CONFIRMAR CARGA
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
