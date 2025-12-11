@@ -1,19 +1,3 @@
-"""
-Django settings optimizado para NUAM - PostgreSQL en Render
-
-CONFIGURACIÓN PARA PRODUCCIÓN:
-- PostgreSQL como base de datos principal
-- Firebase Storage para documentos PDF
-- Celery + Redis para tareas asíncronas
-- Seguridad reforzada
-- Variables de entorno con python-decouple
-
-INSTRUCCIONES:
-1. Renombrar este archivo a settings.py (backup del actual primero)
-2. Crear archivo .env en la raíz con las variables requeridas
-3. En Render, configurar las variables de entorno en el dashboard
-"""
-
 import os
 from pathlib import Path
 from decouple import config, Csv
@@ -32,10 +16,13 @@ DOCLING_API_URL = os.environ.get('DOCLING_API_URL', 'http://localhost:8000/conve
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-CHANGE-ME-IN-PRODUCTION')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=False, cast=bool)
+DEBUG = 'RENDER' not in os.environ
 
 # Hosts permitidos
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 
 # ==============================================================================

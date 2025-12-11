@@ -23,8 +23,9 @@ from .forms import (
     CalificacionForm, ClienteForm, PersonaNaturalForm, PersonaJuridicaForm, CorredoraForm   ,
     IngresoMontoForm, CargaMasivaFactoresForm
 )
-from .services import procesar_archivo_pdf
-#from documentos.firebase_utils import subir_archivo_firebase
+
+from documentos.services import gestionar_carga_documento 
+from documentos.models import Documento
 
 from usuarios.decorators import analista_requerido, administrador_requerido, rol_requerido
 
@@ -42,7 +43,6 @@ def get_lista_context(request):
                        getattr(request.user, 'es_auditor', lambda: False)())
     
     # LÓGICA DE VISIBILIDAD:
-    # Si es analista/corredor, SOLO ve calificaciones de SU corredora.
     if not es_privilegiado:
         if hasattr(request.user, 'corredora') and request.user.corredora:
             calificaciones = calificaciones.filter(corredora=request.user.corredora)
@@ -50,36 +50,26 @@ def get_lista_context(request):
             calificaciones = calificaciones.filter(user=request.user)
 
     # --- 2. Aplicación de Filtros (Búsqueda) ---
-    
-    # A) Búsqueda por Texto
     search_query = request.GET.get('search', '').strip()
     if search_query:
         calificaciones = calificaciones.filter(instrumento__icontains=search_query)
 
-    # B) Año
     anno = request.GET.get('anno')
     if anno:
         calificaciones = calificaciones.filter(anno=anno)
 
-    # C) Mercado
     mercado = request.GET.get('mercado')
     if mercado:
         calificaciones = calificaciones.filter(mercado=mercado)
 
-    # D) Origen (Usuario)
     origen = request.GET.get('origen')
     if origen:
         calificaciones = calificaciones.filter(user__id=origen)
 
-
     # --- 3. Generación de Listas para los Desplegables ---
-    
-    # Lógica para llenar el select de "Origen":
     if es_privilegiado:
-        # Admins ven a todos los usuarios activos
         usuarios_list = User.objects.filter(is_active=True).order_by('apellido')
     elif hasattr(request.user, 'corredora') and request.user.corredora:
-        # Analistas SOLO ven usuarios de SU MISMA corredora
         usuarios_list = User.objects.filter(
             is_active=True, 
             corredora=request.user.corredora
@@ -101,7 +91,7 @@ def get_lista_context(request):
         'is_paginated': page_obj.has_other_pages(),
         'years': years,
         'clientes_list': clientes_list,
-        'usuarios_list': usuarios_list, # Ahora contiene la lista filtrada correctamente
+        'usuarios_list': usuarios_list,
         'es_privilegiado': es_privilegiado,
     }
 
@@ -122,7 +112,6 @@ def calificaciones_lista(request):
 def calificacion_detalle(request, pk):
     calificacion = get_object_or_404(Calificacion, pk=pk)
     
-    # Verificación de permisos
     es_privilegiado = (
         request.user.is_superuser or 
         getattr(request.user, 'es_administrador', lambda: False)() or 
@@ -135,7 +124,6 @@ def calificacion_detalle(request, pk):
                 messages.error(request, 'No tienes permiso para ver esta calificación.')
                 return redirect('calificaciones:listado')
     
-    # Factores
     lista_factores = []
     for i in range(8, 38):
         nombre_campo = f'factor{i}'
@@ -163,7 +151,6 @@ def calificacion_crear(request):
     if request.method == 'POST':
         rut_ingresado = request.POST.get('rut_cliente')
         nombre_instrumento = request.POST.get('instrumento')
-        # El input type="date" siempre envía la fecha como 'YYYY-MM-DD'
         fecha_pago_raw = request.POST.get('fecha_pago') 
         
         if not rut_ingresado or not nombre_instrumento:
@@ -172,7 +159,6 @@ def calificacion_crear(request):
 
         try:
             with transaction.atomic():
-                # 1. BUSCAR O CREAR CLIENTE
                 cliente = Cliente.objects.filter(rut=rut_ingresado).first()
                 if not cliente:
                     cliente = Cliente.objects.create(rut=rut_ingresado, activo=True)
@@ -183,10 +169,8 @@ def calificacion_crear(request):
                         giro="Sin Giro"
                     )
                 
-                # 2. PREPARAR DATOS
                 data = request.POST.copy()
                 data['cliente'] = cliente.id
-                
                 data['fecha_pago'] = fecha_pago_raw 
 
                 form = CalificacionForm(data, user=request.user)
@@ -277,7 +261,6 @@ def ingreso_por_monto(request):
                 estado='BORRADOR',
                 ingreso_montos=True
             )
-            # Guardar factor_actualizacion si viene en el form
             if 'factor_actualizacion' in data:
                 calificacion.factor_actualizacion = data['factor_actualizacion']
 
@@ -320,28 +303,38 @@ def reporte_calificaciones_por_agente(request):
         'corredora': corredora, 'corredoras': corredoras, 'anno': anno, 'estadisticas': estadisticas, 'years': range(2020, datetime.now().year + 2)
     })
 
+
+# ============================================================================
+# --- CORRECCIÓN 2: Vista procesar_pdf_ajax actualizada ---
+# ============================================================================
+@login_required
+@require_POST
 @login_required
 @require_POST
 def procesar_pdf_ajax(request):
-    """
-    Recibe un archivo PDF, llama a Docling y devuelve JSON para la previsualización.
-    """
     if 'archivo_pdf' not in request.FILES:
-        return JsonResponse({'error': 'No se recibió ningún archivo PDF.'}, status=400)
+        return JsonResponse({'error': 'No se recibió archivo.'}, status=400)
 
     archivo = request.FILES['archivo_pdf']
-    
     try:
-        # Llamamos al servicio actualizado
-        datos_json = procesar_archivo_pdf(archivo)
+        # 1. Sube a Azure y crea el registro Documento inmediatamente
+        doc_creado = gestionar_carga_documento(
+            archivo_memoria=archivo,
+            usuario=request.user,
+            tipo_doc='CERT_70'
+        )
         
-        if 'error' in datos_json:
-            return JsonResponse({'error': datos_json['error']}, status=500)
-            
-        return JsonResponse(datos_json)
+        # 2. Obtenemos los datos extraídos por Docling
+        datos = doc_creado.datos_extraidos or {}
+        
+        # 3. ¡IMPORTANTE! Inyectamos el ID del documento en la respuesta
+        datos['documento_id'] = doc_creado.id 
+        #datos['url_azure'] = doc_creado.url_firebase
+        
+        return JsonResponse(datos)
 
     except Exception as e:
-        return JsonResponse({'error': f"Error interno: {str(e)}"}, status=500)
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 @login_required
@@ -357,20 +350,17 @@ def guardar_lote_ajax(request):
 
         for item in data:
             try:
-                # 1. Gestionar Cliente (Buscar o Crear)
-                rut_cliente = item.get('rut_emisor') # Si Docling lo extrajo
-                nombre_cliente = item.get('instrumento') # Usamos instrumento como fallback de nombre
+                # 1. Gestionar Cliente
+                rut_cliente = item.get('rut_emisor')
+                nombre_cliente = item.get('instrumento')
                 
-                # Buscamos por nombre si no hay RUT, o creamos uno dummy
                 cliente = None
                 if nombre_cliente:
                     cliente = Cliente.objects.filter(persona_juridica__razon_social__icontains=nombre_cliente).first()
                 
                 if not cliente:
-                    # Crear cliente temporal o asignar a "Sin Clasificar"
-                    # Por ahora requerimos que exista o lo creamos básico
                     cliente, created = Cliente.objects.get_or_create(
-                        rut='99.999.999-9', # Rut dummy si no se extrajo
+                        rut='99.999.999-9',
                         defaults={'activo': True}
                     )
                     if created:
@@ -395,11 +385,9 @@ def guardar_lote_ajax(request):
                     secuencia_evento=item.get('secuencia'),
                     
                     isfut=(item.get('acogidoISFUT') == 'S'),
-                    #origen=item.get('origen'),
-                    estado='BORRADOR' # Siempre entran como borrador para revisión final
+                    estado='BORRADOR'
                 )
                 
-                # Asignar corredora si corresponde
                 if hasattr(request.user, 'corredora') and request.user.corredora:
                     nueva_calificacion.corredora = request.user.corredora
 
@@ -413,7 +401,22 @@ def guardar_lote_ajax(request):
                         setattr(nueva_calificacion, f'factor{i}', val_dec)
 
                 nueva_calificacion.save()
-                registros_guardados += 1
+                
+                # --- LÓGICA DE VINCULACIÓN ---
+                doc_id = item.get('documento_id')
+                if doc_id:
+                    try:
+                        # Buscamos el documento que subimos en la previsualización
+                        documento = Documento.objects.get(pk=doc_id, usuario_carga=request.user)
+                        
+                        # Lo vinculamos a la calificación recién creada
+                        documento.calificacion = nueva_calificacion
+                        documento.estado = 'COMPLETADO'
+                        documento.save()
+                    except Documento.DoesNotExist:
+                        pass
+
+                    registros_guardados += 1
 
             except Exception as e_row:
                 errores.append(f"Fila {item.get('instrumento')}: {str(e_row)}")
@@ -435,9 +438,6 @@ def guardar_lote_ajax(request):
 @login_required
 @rol_requerido('Administradores', 'Analistas', 'Auditores')
 def clientes_lista(request):
-    """
-    Lista todos los clientes activos.
-    """
     clientes = Cliente.objects.filter(activo=True).order_by('rut')
     return render(request, 'clientes/lista.html', {'clientes': clientes})
 
@@ -445,9 +445,6 @@ def clientes_lista(request):
 @login_required
 @rol_requerido('Administradores', 'Analistas', 'Auditores')
 def cliente_detalle(request, pk):
-    """
-    Muestra el detalle de un cliente específico.
-    """
     cliente = get_object_or_404(Cliente, pk=pk)
     return render(request, 'clientes/detalle.html', {'cliente': cliente})
 
@@ -455,20 +452,14 @@ def cliente_detalle(request, pk):
 @login_required
 @analista_requerido
 def cliente_crear(request):
-    """
-    Crea un nuevo cliente. Maneja la lógica de pestañas (Natural/Jurídica)
-    validando solo los formularios correspondientes al tipo seleccionado.
-    """
     tipo_seleccionado = 'natural' 
 
     if request.method == 'POST':
         tipo = request.POST.get('tipo', 'natural')
         tipo_seleccionado = tipo
         
-        # El formulario base (ClienteForm) siempre se valida
         cliente_form = ClienteForm(request.POST)
         
-        # Inicializamos los formularios específicos
         if tipo == 'natural':
             persona_form = PersonaNaturalForm(request.POST)
             persona_juridica_form = PersonaJuridicaForm() 
@@ -476,29 +467,22 @@ def cliente_crear(request):
             persona_form = PersonaJuridicaForm(request.POST)
             persona_natural_form = PersonaNaturalForm() 
 
-        # Validamos Cliente + El formulario específico seleccionado
         if cliente_form.is_valid() and persona_form.is_valid():
             try:
-                # 1. Guardar Cliente Base
                 cliente = cliente_form.save()
-                
-                # 2. Guardar Persona Específica vinculada al cliente
                 persona = persona_form.save(commit=False)
                 persona.cliente = cliente
                 persona.save()
-                
                 messages.success(request, 'Cliente creado exitosamente.')
                 return redirect('clientes:detalle', pk=cliente.pk)
             except Exception as e:
                 messages.error(request, f'Error al guardar en base de datos: {str(e)}')
         else:
-            # Feedback de errores
             if not cliente_form.is_valid():
                 messages.error(request, f"Error en Datos de Contacto: {cliente_form.errors.as_text()}")
             if not persona_form.is_valid():
                 messages.error(request, f"Error en Datos Específicos: {persona_form.errors.as_text()}")
     else:
-        # GET: Formularios vacíos
         cliente_form = ClienteForm()
         persona_natural_form = PersonaNaturalForm()
         persona_juridica_form = PersonaJuridicaForm()
@@ -506,7 +490,6 @@ def cliente_crear(request):
 
     context = {
         'cliente_form': cliente_form,
-        # Pasamos los formularios específicos para que se rendericen en el HTML
         'persona_natural_form': persona_natural_form if request.method == 'GET' else (persona_form if tipo_seleccionado == 'natural' else PersonaNaturalForm()),
         'persona_juridica_form': persona_juridica_form if request.method == 'GET' else (persona_form if tipo_seleccionado == 'juridica' else PersonaJuridicaForm()),
         'tipo_seleccionado': tipo_seleccionado, 
@@ -518,12 +501,8 @@ def cliente_crear(request):
 @login_required
 @analista_requerido
 def cliente_editar(request, pk):
-    """
-    Edita un cliente existente. Detecta automáticamente si es Natural o Jurídica.
-    """
     cliente = get_object_or_404(Cliente, pk=pk)
     
-    # Determinar tipo de cliente actual
     es_natural = hasattr(cliente, 'persona_natural')
     tipo_seleccionado = 'natural' if es_natural else 'juridica'
     
@@ -549,13 +528,12 @@ def cliente_editar(request, pk):
         else:
             persona_form = PersonaJuridicaForm(instance=cliente.persona_juridica)
     
-    # Para el template de edición, simplificamos pasando solo el form activo
     context = {
         'cliente_form': cliente_form,
-        'persona_form': persona_form, # Este se renderizará genéricamente en el template
-        'es_natural': es_natural,     # Flag para saber qué mostrar
+        'persona_form': persona_form, 
+        'es_natural': es_natural,     
         'cliente': cliente,
-        'edit_mode': True             # Para adaptar el template si es necesario
+        'edit_mode': True             
     }
 
     return render(request, 'clientes/form.html', context)
@@ -568,9 +546,6 @@ def cliente_editar(request, pk):
 @login_required
 @administrador_requerido
 def corredoras_lista(request):
-    """
-    Lista todas las corredoras registradas.
-    """
     corredoras = Corredora.objects.all().order_by('nombre')
     return render(request, 'corredoras/lista.html', {'corredoras': corredoras})
 
@@ -578,9 +553,6 @@ def corredoras_lista(request):
 @login_required
 @administrador_requerido
 def corredora_detalle(request, pk):
-    """
-    Muestra el detalle de una corredora.
-    """
     corredora = get_object_or_404(Corredora, pk=pk)
     return render(request, 'corredoras/detalle.html', {'corredora': corredora})
 
@@ -588,11 +560,7 @@ def corredora_detalle(request, pk):
 @login_required
 @administrador_requerido
 def corredora_crear(request):
-    """
-    Crea una nueva corredora.
-    """
     if request.method == 'POST':
-        # Nota: Usamos CorrederaForm según tu archivo forms.py (ojo con el typo 'Corredera' vs 'Corredora')
         form = CorredoraForm(request.POST)
         if form.is_valid():
             form.save()
@@ -601,7 +569,7 @@ def corredora_crear(request):
         else:
             messages.error(request, 'Error al crear la corredora. Verifique los datos.')
     else:
-        form = CorrederaForm()
+        form = CorredoraForm()
     
     return render(request, 'corredoras/form.html', {
         'form': form, 
@@ -612,13 +580,10 @@ def corredora_crear(request):
 @login_required
 @administrador_requerido
 def corredora_editar(request, pk):
-    """
-    Edita una corredora existente.
-    """
     corredora = get_object_or_404(Corredora, pk=pk)
     
     if request.method == 'POST':
-        form = CorrederaForm(request.POST, instance=corredora)
+        form = CorredoraForm(request.POST, instance=corredora)
         if form.is_valid():
             form.save()
             messages.success(request, 'Corredora actualizada exitosamente.')
@@ -626,7 +591,7 @@ def corredora_editar(request, pk):
         else:
             messages.error(request, 'Error al actualizar. Verifique los datos.')
     else:
-        form = CorrederaForm(instance=corredora)
+        form = CorredoraForm(instance=corredora)
     
     return render(request, 'corredoras/form.html', {
         'form': form, 

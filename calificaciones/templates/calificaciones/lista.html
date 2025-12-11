@@ -799,10 +799,7 @@
     }
 
     function procesarArchivo(file) {
-        // 1. UI: Estado Cargando (Sin botones)
         actualizarEstadoModal('cargando');
-        
-        console.log("Subiendo archivo al backend...");
         
         let formData = new FormData();
         formData.append('archivo_pdf', file);
@@ -815,8 +812,16 @@
             body: formData,
             headers: { 'X-CSRFToken': csrftoken }
         })
-        .then(response => response.json())
+        .then(response => {
+            // Verificamos si la respuesta es válida antes de procesarla
+            if (!response.ok) {
+                throw new Error("Error en la respuesta del servidor: " + response.statusText);
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log("Datos recibidos:", data);
+
             if(data.error) {
                 alert("Error del sistema: " + data.error);
                 actualizarEstadoModal('lista');
@@ -825,12 +830,12 @@
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert("Error de conexión con el servidor.");
+            console.error('Error capturado:', error);
+            alert("Ocurrió un error al procesar el archivo. Revisa la consola (F12) para más detalles.");
             actualizarEstadoModal('lista');
         });
     }
-
+    
     function mostrarPrevisualizacion(datos, esRevision) {
         datosTemporales = datos; 
         const tbody = document.getElementById('tbody-previsualizacion');
@@ -879,13 +884,10 @@
         }
         let acogidoISFUT = (f15 !== 0 || f16 !== 0) ? 'S' : 'N';
         
-        // --- CAMBIO AQUÍ ---
-        // Usamos comillas para que sea un string de JS, pero adentro ponemos el tag de Django
         let origen = "{{ user.get_full_name|default:user.email }}";
-        // -------------------
 
         datosTemporales.acogidoISFUT = acogidoISFUT;
-        datosTemporales.origen = origen; // Esto es solo para mostrarlo en la tabla visualmente
+        datosTemporales.origen = origen;
 
         listaParaGrabar.push(datosTemporales);
         renderizarTablaPrincipal();
