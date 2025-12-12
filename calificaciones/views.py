@@ -4,7 +4,7 @@ Vistas para la app calificaciones (CRUD, reportes, cálculos y cargas masivas)
 import csv
 import io
 import json
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime
 
 from django.db import transaction
@@ -95,6 +95,81 @@ def get_lista_context(request):
         'es_privilegiado': es_privilegiado,
     }
 
+from decimal import Decimal, ROUND_HALF_UP
+
+def procesar_montos_a_factores(data):
+    # Si no es modo monto, retornar data original
+    if data.get('modo_ingreso') != 'monto':
+        return data
+
+    data_procesada = data.copy()
+    PRECISION = Decimal("0.00000001")
+    rango_completo = range(8, 38)
+    
+    # -------------------------------------------------------
+    # 1. Sumar TODOS los montos ingresados
+    # -------------------------------------------------------
+    suma_montos = Decimal(0)
+    for i in rango_completo:
+        key_monto = f'monto_factor{i}'
+        valor = data.get(key_monto)
+        if valor and str(valor).strip():
+            suma_montos += Decimal(str(valor))
+            
+    # Si la suma es 0, limpiamos y salimos
+    if suma_montos == 0:
+        for i in rango_completo:
+            data_procesada[f'factor{i}'] = 0
+        return data_procesada
+
+    # -------------------------------------------------------
+    # 2. Calcular factores preliminares y guardarlos
+    # -------------------------------------------------------
+    suma_factores_calculados = Decimal(0)
+    mayor_factor_valor = Decimal(-1)
+    mayor_factor_index = -1
+
+    for i in rango_completo:
+        key_monto = f'monto_factor{i}'
+        key_destino = f'factor{i}'
+        val_original = data.get(key_monto)
+        
+        factor_redondeado = Decimal(0)
+
+        if val_original and str(val_original).strip():
+            monto = Decimal(str(val_original))
+            # Cálculo: Monto / SumaTotal
+            factor_raw = monto / suma_montos
+            # Redondeo individual
+            factor_redondeado = factor_raw.quantize(PRECISION, rounding=ROUND_HALF_UP)
+
+        data_procesada[key_destino] = factor_redondeado
+        suma_factores_calculados += factor_redondeado
+
+        # Rastreamos cuál es el factor más grande para ajustar diferencias ahí
+        if factor_redondeado > mayor_factor_valor:
+            mayor_factor_valor = factor_redondeado
+            mayor_factor_index = i
+
+    # -------------------------------------------------------
+    # 3. EL CUADRE FINAL (Ajuste de residuos)
+    # -------------------------------------------------------
+    # Verificamos si la suma difiere de 1.00000000
+    objetivo = Decimal("1.00000000")
+    diferencia = objetivo - suma_factores_calculados
+
+    # Si hay diferencia (ej: 0.00000001) y encontramos un factor donde ajustarla
+    if diferencia != 0 and mayor_factor_index != -1:
+        key_ajuste = f'factor{mayor_factor_index}'
+        valor_actual = data_procesada[key_ajuste]
+        
+        # Le sumamos (o restamos) la diferencia al factor más grande
+        data_procesada[key_ajuste] = valor_actual + diferencia
+        
+        # (Opcional) Print para debug
+        print(f"DEBUG: Ajuste de cuadre aplicado en F-{mayor_factor_index}. Diff: {diferencia}")
+
+    return data_procesada
 
 # ============================================================================
 # VISTAS DE CALIFICACIONES (CRUD + PROCESOS)
@@ -148,11 +223,20 @@ def calificacion_detalle(request, pk):
 @login_required
 @analista_requerido
 def calificacion_crear(request):
+    print("--- INICIO DEBUG CALIFICACION CREAR ---")
     if request.method == 'POST':
         rut_ingresado = request.POST.get('rut_cliente')
         nombre_instrumento = request.POST.get('instrumento')
-        fecha_pago_raw = request.POST.get('fecha_pago') 
+        fecha_pago_raw = request.POST.get('fecha_pago')
         
+        # DEBUG: Ver qué llega crudo
+        print(f"1. RUT: {rut_ingresado}, Inst: {nombre_instrumento}")
+        print(f"2. Modo Ingreso detectado: {request.POST.get('modo_ingreso')}")
+        
+        # Verificar si llega algún monto de ejemplo (ej. factor8 renombrado)
+        print(f"3. Ejemplo Monto F8 (monto_factor8): {request.POST.get('monto_factor8')}")
+        print(f"4. Ejemplo Factor F8 original (factor8): {request.POST.get('factor8')}")
+
         if not rut_ingresado or not nombre_instrumento:
             messages.error(request, 'El RUT y el Instrumento son obligatorios.')
             return redirect('calificaciones:listado')
@@ -161,6 +245,7 @@ def calificacion_crear(request):
             with transaction.atomic():
                 cliente = Cliente.objects.filter(rut=rut_ingresado).first()
                 if not cliente:
+                    print("   Creando cliente nuevo...")
                     cliente = Cliente.objects.create(rut=rut_ingresado, activo=True)
                     PersonaJuridica.objects.create(
                         cliente=cliente, 
@@ -169,13 +254,21 @@ def calificacion_crear(request):
                         giro="Sin Giro"
                     )
                 
+                # Copia y Procesamiento
                 data = request.POST.copy()
+                data = procesar_montos_a_factores(data)
+                
+                # DEBUG: Ver dato procesado antes de validar
+                print(f"5. Factor 8 despues de procesar: {data.get('factor8')}")
+                
+                # Completar datos
                 data['cliente'] = cliente.id
                 data['fecha_pago'] = fecha_pago_raw 
 
                 form = CalificacionForm(data, user=request.user)
                 
                 if form.is_valid():
+                    print("6. FORM VALIDADO OK. Guardando...")
                     calificacion = form.save(commit=False)
                     calificacion.user = request.user
                     calificacion.cliente = cliente
@@ -185,12 +278,20 @@ def calificacion_crear(request):
                     
                     calificacion.save()
                     messages.success(request, f'Calificación creada para {nombre_instrumento}.')
+                    print("--- FIN DEBUG: EXITO ---")
                     return redirect('calificaciones:listado')
                 else:
-                    messages.error(request, f'Error al guardar: {form.errors.as_text()}')
+                    # DEBUG: ¡AQUI ESTA EL ERROR!
+                    errores = form.errors.as_text()
+                    print("6. ERROR DE VALIDACION DEL FORMULARIO:")
+                    print(errores)
+                    print(form.errors) # Imprime detalle completo
+                    
+                    messages.error(request, f'Error al guardar: {errores}')
                     return redirect('calificaciones:listado')
 
         except Exception as e:
+            print(f"ERROR CRITICO EXCEPTION: {str(e)}")
             messages.error(request, f'Error crítico: {str(e)}')
             return redirect('calificaciones:listado')
 

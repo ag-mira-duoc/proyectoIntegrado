@@ -424,9 +424,12 @@
                             </div>
                         </div>
                     </div>
-
+                    
+                    <!-- MODAL PASO 2-->
                     <div id="step2-factores" style="display: none;">
-                        
+
+                        <input type="hidden" name="modo_ingreso" id="inputModoIngreso" value="factor">
+
                         <div class="card bg-light border-0 mb-3">
                             <div class="card-body py-2">
                                 <div class="row g-2 small">
@@ -442,13 +445,14 @@
                                         <span class="text-muted d-block">Valor Histórico</span>
                                         <strong id="res_valor_historico" class="bg-white px-2 border rounded d-block"></strong>
                                     </div>
+
                                     <div class="col-md-3">
                                         <span class="text-muted d-block">Ingreso por Montos</span>
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="ingreso_montos_check">
+                                            <input class="form-check-input" type="checkbox" name="ingreso_montos_check" id="checkModoMonto">
                                         </div>
                                     </div>
-                                    
+
                                     <div class="col-md-3">
                                         <span class="text-muted d-block">Fecha Pago</span>
                                         <strong id="res_fecha" class="bg-white px-2 border rounded d-block"></strong>
@@ -464,70 +468,354 @@
                                 </div>
                             </div>
                         </div>
-
+                    
                         <div class="border rounded p-2" style="max-height: 45vh; overflow-y: auto;">
                             <div class="row g-2">
-                                <script>
-                                    const descripcionesFactores = {
-                                        8: "Monto Afecto IGC y/o IA c/Créd. IDPC desde 01.01.2017",
-                                        9: "Afectos IGC y/o IA c/Créd. IDPC hasta 31.12.2016",
-                                        10: "Afectos IGC y/o IA c/Créd. pago IDPC Voluntario",
-                                        11: "Afectos IGC y/o IA Sin Derecho a Crédito",
-                                        12: "REX - Trib. Cumplida - RAP y Dif. Inicial ex Art. 14 TER A",
-                                        13: "REX - Trib. Cumplida - Otras Rentas Sin Prioridad",
-                                        14: "REX - Trib. Cumplida - Exceso Dist. Desproporcionadas",
-                                        15: "REX - Trib. Cumplida - ISFUT Ley 20.780",
-                                        16: "REX - Rentas hasta 1983 y/o ISFUT Ley 21.210",
-                                        17: "REX - Exentas IGC (Art. 11), Afectas IA",
-                                        18: "REX - Exentas IGC y/o IA",
-                                        19: "Ingresos No Constitutivos de Renta",
-        
 
-                                        20: "ST 2017 - Afectas - No Suj. Rest. hasta 2019 (Sin Dev.)",
-                                        21: "ST 2017 - Afectas - No Suj. Rest. hasta 2019 (Con Dev.)",
-                                        22: "ST 2017 - Afectas - No Suj. Rest. desde 2020 (Sin Dev.)",
-                                        23: "ST 2017 - Afectas - No Suj. Rest. desde 2020 (Con Dev.)",
-                                        24: "ST 2017 - Afectas - Suj. Rest. (Sin Dev.)",
-                                        25: "ST 2017 - Afectas - Suj. Rest. (Con Dev.)",
-                                        26: "ST 2017 - Exentas - Suj. Rest. (Sin Dev.)",
-                                        27: "ST 2017 - Exentas - Suj. Rest. (Con Dev.)",
-                                        28: "ST 2017 - Crédito por IPE",
-        
-                                        29: "ST 2016 - Afectas (Sin Dev.)",
-                                        30: "ST 2016 - Afectas (Con Dev.)",
-                                        31: "ST 2016 - Exentas (Sin Dev.)",
-                                        32: "ST 2016 - Exentas (Con Dev.)",
-                                        33: "ST 2016 - Crédito por IPE",
-
-                                        34: "Créd. Impto. Tasa Adicional, Ex. Art. 21 LIR",
-                                        35: "Tasa Efectiva del Créd. del FUT (TEF)",
-                                        36: "Tasa Efectiva del Créd. del FUNT (TEX)",
-                                        37: "Devolución Capital Art. 17 N°7 LIR"
-                                        };
-                                    
-                                    for(let i=8; i<=37; i++){
-                                        let desc = descripcionesFactores[i] || "Sin Descripción";
-                                        // Usamos text-wrap y lh-sm (line-height small) para que las descripciones largas
-                                        // se acomoden en varias líneas de forma compacta y legible.
-                                        document.write(`
-                                            <div class="col-md-6 mb-2">
-                                                <div class="d-flex align-items-start">
-                                                    <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;" title="${desc}">
-                                                        <strong>F-${i}</strong> ${desc}
-                                                    </label>
-                                                    <div style="width: 35%;">
-                                                        <input type="number" step="0.00000001" name="factor${i}" class="form-control form-control-sm border-secondary-subtle">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        `);
-                                    }
-                                </script>
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-8</strong> Monto Afecto IGC y/o IA c/Créd. IDPC desde 01.01.2017
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor8" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-9</strong> Afectos IGC y/o IA c/Créd. IDPC hasta 31.12.2016
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor9" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-10</strong> Afectos IGC y/o IA c/Créd. pago IDPC Voluntario
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor10" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-11</strong> Afectos IGC y/o IA Sin Derecho a Crédito
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor11" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-12</strong> REX - Trib. Cumplida - RAP y Dif. Inicial ex Art. 14 TER A
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor12" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-13</strong> REX - Trib. Cumplida - Otras Rentas Sin Prioridad
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor13" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-14</strong> REX - Trib. Cumplida - Exceso Dist. Desproporcionadas
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor14" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-15</strong> REX - Trib. Cumplida - ISFUT Ley 20.780
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor15" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-16</strong> REX - Rentas hasta 1983 y/o ISFUT Ley 21.210
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor16" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-17</strong> REX - Exentas IGC (Art. 11), Afectas IA
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor17" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-18</strong> REX - Exentas IGC y/o IA
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor18" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-19</strong> Ingresos No Constitutivos de Renta
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor19" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-20</strong> ST 2017 - Afectas - No Suj. Rest. hasta 2019 (Sin Dev.)
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor20" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-21</strong> ST 2017 - Afectas - No Suj. Rest. hasta 2019 (Con Dev.)
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor21" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-22</strong> ST 2017 - Afectas - No Suj. Rest. desde 2020 (Sin Dev.)
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor22" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-23</strong> ST 2017 - Afectas - No Suj. Rest. desde 2020 (Con Dev.)
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor23" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-24</strong> ST 2017 - Afectas - Suj. Rest. (Sin Dev.)
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor24" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-25</strong> ST 2017 - Afectas - Suj. Rest. (Con Dev.)
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor25" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-26</strong> ST 2017 - Exentas - Suj. Rest. (Sin Dev.)
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor26" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-27</strong> ST 2017 - Exentas - Suj. Rest. (Con Dev.)
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor27" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-28</strong> ST 2017 - Crédito por IPE
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor28" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-29</strong> ST 2016 - Afectas (Sin Dev.)
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor29" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-30</strong> ST 2016 - Afectas (Con Dev.)
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor30" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-31</strong> ST 2016 - Exentas (Sin Dev.)
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor31" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-32</strong> ST 2016 - Exentas (Con Dev.)
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor32" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-33</strong> ST 2016 - Crédito por IPE
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor33" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-34</strong> Créd. Impto. Tasa Adicional, Ex. Art. 21 LIR
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor34" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-35</strong> Tasa Efectiva del Créd. del FUT (TEF)
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor35" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-36</strong> Tasa Efectiva del Créd. del FUNT (TEX)
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor36" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <label class="small text-muted me-2 text-wrap lh-sm" style="width: 65%; font-size: 0.70rem;">
+                                            <strong>F-37</strong> Devolución Capital Art. 17 N°7 LIR
+                                        </label>
+                                        <div style="width: 35%;">
+                                            <input type="number" step="any" name="factor37" class="form-control form-control-sm border-secondary-subtle" placeholder="0.00000000">
+                                        </div>
+                                    </div>
+                                </div>
+                            
                             </div>
                         </div>
-                    </div>
-                </div>
 
+                        <div class="mt-3 text-end">
+                            <button type="button" class="btn btn-secondary me-2" id="btnAtras" onclick="irAPaso1()">
+                                <i class="bi bi-arrow-left"></i> Atrás
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="btnGuardar">
+                                <i class="bi bi-save"></i> Guardar Calificación
+                            </button>
+                        </div>
+                    </div>
+
+                <!-- MODAL FOOTER-->
                 <div class="modal-footer border-top-0">
                     <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">CANCELAR</button>
                     
@@ -1067,5 +1355,22 @@
         
         document.getElementById('modalLabel').innerHTML = '<i class="bi bi-pencil-square me-2"></i>Ingresar Calificación';
     }
+
+    document.getElementById('formIngreso').addEventListener('submit', function(e) {
+        const checkMonto = document.getElementById('checkModoMonto');
+        
+        if (checkMonto && checkMonto.checked) {
+            
+            document.getElementById('inputModoIngreso').value = 'monto';
+
+            for(let i=8; i<=37; i++) {
+                const input = document.querySelector(`input[name="factor${i}"]`);
+                if(input) {
+                    input.name = `monto_factor${i}`;
+                }
+            }
+        }
+    });
+
 </script>
 {% endblock %}
