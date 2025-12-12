@@ -225,9 +225,12 @@ def calificacion_detalle(request, pk):
 @analista_requerido
 def calificacion_crear(request):
     if request.method == 'POST':
+        # Datos clave para la búsqueda
         rut_ingresado = request.POST.get('rut_cliente')
         nombre_instrumento = request.POST.get('instrumento')
         fecha_pago_raw = request.POST.get('fecha_pago')
+        
+        anno_comercial = request.POST.get('anno')
 
         if not rut_ingresado or not nombre_instrumento:
             messages.error(request, 'El RUT y el Instrumento son obligatorios.')
@@ -235,10 +238,12 @@ def calificacion_crear(request):
 
         try:
             with transaction.atomic():
+                # 1. Gestión del Cliente (Búsqueda o Creación)
                 cliente = Cliente.objects.filter(rut=rut_ingresado).first()
                 if not cliente:
-                    print("   Creando cliente nuevo...")
+                    print(f"   Creando cliente nuevo para RUT: {rut_ingresado}")
                     cliente = Cliente.objects.create(rut=rut_ingresado, activo=True)
+                    # Creamos datos jurídicos por defecto para el nuevo cliente
                     PersonaJuridica.objects.create(
                         cliente=cliente, 
                         razon_social=nombre_instrumento,
@@ -246,18 +251,32 @@ def calificacion_crear(request):
                         giro="Sin Giro"
                     )
                 
-                # Copia y Procesamiento
+                # 2. LÓGICA DE SOBREESCRITURA (UPSERT) POR EJERCICIO COMERCIAL
+                # Buscamos si ya existe una calificación para este Cliente en este Año Comercial (anno)
+                calificacion_existente = None
+                
+                if anno_comercial:
+                    calificacion_existente = Calificacion.objects.filter(
+                        cliente=cliente,
+                        anno=anno_comercial
+                    ).first()
+
+                # 3. Procesamiento de Factores (Lógica de negocio existente)
                 data = request.POST.copy()
                 data = procesar_montos_a_factores(data)
                 
-                # Completar datos
+                # Inyectamos relaciones y datos formateados
                 data['cliente'] = cliente.id
                 data['fecha_pago'] = fecha_pago_raw 
 
-                form = CalificacionForm(data, user=request.user)
+                # 4. Instanciamos el Formulario
+                # Si encontramos 'calificacion_existente', Django hará un UPDATE sobre ese ID.
+                # Si es None, Django hará un INSERT nuevo.
+                form = CalificacionForm(data, instance=calificacion_existente, user=request.user)
                 
                 if form.is_valid():
                     calificacion = form.save(commit=False)
+                    
                     calificacion.user = request.user
                     calificacion.cliente = cliente
                     
@@ -265,17 +284,22 @@ def calificacion_crear(request):
                         calificacion.corredora = request.user.corredora
                     
                     calificacion.save()
-                    messages.success(request, f'Calificación creada para {nombre_instrumento}.')
+
+                    # Feedback preciso al usuario
+                    if calificacion_existente:
+                        messages.info(request, f'ATENCIÓN: Se actualizó la calificación existente del Ejercicio {anno_comercial} para este cliente.')
+                    else:
+                        messages.success(request, f'Calificación creada exitosamente para el Ejercicio {anno_comercial}.')
+                        
                     return redirect('calificaciones:listado')
                 else:
                     errores = form.errors.as_text()
-                    
-                    messages.error(request, f'Error al guardar: {errores}')
+                    messages.error(request, f'Error de validación: {errores}')
                     return redirect('calificaciones:listado')
 
         except Exception as e:
-            print(f"ERROR CRITICO EXCEPTION: {str(e)}")
-            messages.error(request, f'Error crítico: {str(e)}')
+            print(f"ERROR CRITICO EN VISTA: {str(e)}")
+            messages.error(request, f'Error del sistema: {str(e)}')
             return redirect('calificaciones:listado')
 
     else:
