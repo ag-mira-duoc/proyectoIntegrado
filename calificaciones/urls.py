@@ -17,7 +17,8 @@ urlpatterns = [
     path('ingreso-monto/', views.ingreso_por_monto, name='ingreso_monto'),
     path('api/extraer-pdf/', views.procesar_pdf_ajax, name='api_extraer_pdf'),
     path('api/guardar-lote/', views.guardar_lote_ajax, name='api_guardar_lote'),
-    
+
     # Reportes
     path('reporte-agentes/', views.reporte_calificaciones_por_agente, name='reporte_agentes'),
+    path('reportes-admin/', views.reportes_admin, name='reportes_admin'),
 ]

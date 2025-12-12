@@ -45,4 +45,12 @@
         </a>
     </li>
     {% endif %}
+
+    {% if user.is_superuser or user.es_administrador %}
+        <li class="nav-item">
+            <a class="nav-link {% if 'reportes-admin' in request.path %}active{% endif %}" href="{% url 'calificaciones:reportes_admin' %}">
+                <i class="bi bi-graph-up"></i> Reportes
+            </a>
+        </li>
+    {% endif %}
 </ul>

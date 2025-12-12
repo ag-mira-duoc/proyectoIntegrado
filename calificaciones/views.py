@@ -5,14 +5,15 @@ import csv
 import io
 import json
 from decimal import Decimal, ROUND_HALF_UP
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.db import transaction
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Q, Count
+from django.db.models import Q, Count, F, Case, When, FloatField
+from django.db.models.functions import TruncWeek, TruncMonth, ExtractWeekDay
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -698,3 +699,206 @@ def corredora_editar(request, pk):
         'form': form, 
         'form_title': f'Editar {corredora.nombre}'
     })
+
+@login_required
+@administrador_requerido
+def reportes_admin(request):
+    """
+    Vista de reportes administrativos con 8 reportes diferentes.
+    Solo accesible para administradores.
+    """
+    
+    # ==========================================
+    # REPORTE 1: Top 10 Clientes
+    # ==========================================
+    top_clientes = Calificacion.objects.values(
+        'cliente__rut'
+    ).annotate(
+        total=Count('id'),
+        aprobadas=Count('id', filter=Q(estado='APROBADA')),
+        en_revision=Count('id', filter=Q(estado='REVISION'))
+    ).order_by('-total')[:10]
+    
+    # ==========================================
+    # REPORTE 2: Distribución por Estado
+    # ==========================================
+    distribucion_estados = []
+    for estado_code, estado_display in Calificacion.ESTADOS:
+        count = Calificacion.objects.filter(estado=estado_code).count()
+        if count > 0:
+            distribucion_estados.append({
+                'estado': estado_display,
+                'cantidad': count
+            })
+    
+    # ==========================================
+    # REPORTE 3: Tendencia Semanal (últimas 8 semanas)
+    # ==========================================
+    fecha_inicio_tendencia = datetime.now() - timedelta(weeks=8)
+    tendencia_semanal = Calificacion.objects.filter(
+        created_at__gte=fecha_inicio_tendencia
+    ).annotate(
+        semana=TruncWeek('created_at')
+    ).values('semana').annotate(
+        cantidad=Count('id')
+    ).order_by('semana')
+    
+    # ==========================================
+    # REPORTE 4: Top 10 Corredoras
+    # ==========================================
+    top_corredoras = Calificacion.objects.values(
+        'corredora__nombre'
+    ).annotate(
+        total=Count('id'),
+        aprobadas=Count('id', filter=Q(estado='APROBADA'))
+    ).order_by('-total')[:10]
+    
+    # ==========================================
+    # REPORTE 5: Productividad por Analista (Top 10)
+    # ==========================================
+    productividad_analistas = Calificacion.objects.values(
+        'user__nombre', 'user__apellido', 'user__email'
+    ).annotate(
+        total=Count('id'),
+        aprobadas=Count('id', filter=Q(estado='APROBADA')),
+        en_revision=Count('id', filter=Q(estado='REVISION')),
+        borradores=Count('id', filter=Q(estado='BORRADOR'))
+    ).order_by('-total')[:10]
+    
+    # ==========================================
+    # REPORTE 6: Tasa de Aprobación por Corredora
+    # ==========================================
+    tasa_aprobacion_corredoras = Calificacion.objects.values(
+        'corredora__nombre'
+    ).annotate(
+        total=Count('id'),
+        aprobadas=Count('id', filter=Q(estado='APROBADA'))
+    ).filter(total__gte=5).order_by('-total')[:10]  # Mínimo 5 calificaciones
+    
+    # Calcular tasa de aprobación manualmente (para evitar división por cero)
+    for item in tasa_aprobacion_corredoras:
+        if item['total'] > 0:
+            item['tasa'] = round((item['aprobadas'] / item['total']) * 100, 1)
+        else:
+            item['tasa'] = 0
+    
+    # ==========================================
+    # REPORTE 7: Actividad por Día de la Semana
+    # ==========================================
+    actividad_semanal = Calificacion.objects.annotate(
+        dia=ExtractWeekDay('created_at')  # 1=Domingo, 2=Lunes, ..., 7=Sábado
+    ).values('dia').annotate(
+        cantidad=Count('id')
+    ).order_by('dia')
+    
+    # Mapear números a nombres de días
+    dias_nombres = {
+        1: 'Domingo',
+        2: 'Lunes',
+        3: 'Martes',
+        4: 'Miércoles',
+        5: 'Jueves',
+        6: 'Viernes',
+        7: 'Sábado'
+    }
+    
+    actividad_semanal_formateada = []
+    for item in actividad_semanal:
+        actividad_semanal_formateada.append({
+            'dia': dias_nombres.get(item['dia'], 'Desconocido'),
+            'dia_num': item['dia'],
+            'cantidad': item['cantidad']
+        })
+    
+    # ==========================================
+    # REPORTE 8: Comparación Mes Actual vs Anterior
+    # ==========================================
+    ahora = datetime.now()
+    
+    # Mes actual
+    mes_actual_stats = Calificacion.objects.filter(
+        created_at__month=ahora.month,
+        created_at__year=ahora.year
+    ).aggregate(
+        total=Count('id'),
+        aprobadas=Count('id', filter=Q(estado='APROBADA')),
+        en_revision=Count('id', filter=Q(estado='REVISION'))
+    )
+    
+    # Mes anterior
+    if ahora.month == 1:
+        mes_anterior_num = 12
+        año_anterior = ahora.year - 1
+    else:
+        mes_anterior_num = ahora.month - 1
+        año_anterior = ahora.year
+    
+    mes_anterior_stats = Calificacion.objects.filter(
+        created_at__month=mes_anterior_num,
+        created_at__year=año_anterior
+    ).aggregate(
+        total=Count('id'),
+        aprobadas=Count('id', filter=Q(estado='APROBADA')),
+        en_revision=Count('id', filter=Q(estado='REVISION'))
+    )
+    
+    # Calcular crecimiento
+    def calcular_crecimiento(actual, anterior):
+        if anterior and anterior > 0:
+            return round(((actual - anterior) / anterior) * 100, 1)
+        elif actual > 0:
+            return 100.0  # Si no había nada antes y ahora hay, es 100% de crecimiento
+        return 0.0
+    
+    crecimiento_total = calcular_crecimiento(
+        mes_actual_stats.get('total', 0),
+        mes_anterior_stats.get('total', 0)
+    )
+    
+    crecimiento_aprobadas = calcular_crecimiento(
+        mes_actual_stats.get('aprobadas', 0),
+        mes_anterior_stats.get('aprobadas', 0)
+    )
+    
+    # Nombres de meses
+    meses_nombres = {
+        1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+        5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+        9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+    }
+    
+    mes_actual_nombre = meses_nombres.get(ahora.month)
+    mes_anterior_nombre = meses_nombres.get(mes_anterior_num)
+    
+    # ==========================================
+    # ESTADÍSTICAS GENERALES
+    # ==========================================
+    total_calificaciones = Calificacion.objects.count()
+    total_aprobadas = Calificacion.objects.filter(estado='APROBADA').count()
+    total_revision = Calificacion.objects.filter(estado='REVISION').count()
+    total_clientes = Cliente.objects.filter(activo=True).count()
+    
+    context = {
+        # Reportes
+        'top_clientes': top_clientes,
+        'distribucion_estados': distribucion_estados,
+        'tendencia_semanal': tendencia_semanal,
+        'top_corredoras': top_corredoras,
+        'productividad_analistas': productividad_analistas,
+        'tasa_aprobacion_corredoras': tasa_aprobacion_corredoras,
+        'actividad_semanal': actividad_semanal_formateada,
+        'mes_actual_stats': mes_actual_stats,
+        'mes_anterior_stats': mes_anterior_stats,
+        'crecimiento_total': crecimiento_total,
+        'crecimiento_aprobadas': crecimiento_aprobadas,
+        'mes_actual_nombre': mes_actual_nombre,
+        'mes_anterior_nombre': mes_anterior_nombre,
+        
+        # Estadísticas generales
+        'total_calificaciones': total_calificaciones,
+        'total_aprobadas': total_aprobadas,
+        'total_revision': total_revision,
+        'total_clientes': total_clientes,
+    }
+    
+    return render(request, 'calificaciones/reportes_admin.html', context)
