@@ -189,7 +189,6 @@
                 {% endif %}
             </div>
         </form>
-        </form>
     </div>
 </div>
 
@@ -198,8 +197,7 @@
         <div class="table-responsive">
             <table class="table table-hover table-bordered mb-0 table-resizable" id="tablaCalificaciones">
                 <thead class="table-light">
-                    <tr>
-                        <th class="col-fixed-1 text-center">Ejercicio</th>
+                    <tr> <th class="col-fixed-1 text-center">Ejercicio</th>
                         <th class="col-fixed-2">Instrumento</th>
                         
                         <th style="min-width: 100px;">Fec. Pago</th>
@@ -312,12 +310,16 @@
         <button type="button" class="btn btn-outline-dark btn-toolbar-custom" disabled>
             COPIAR
         </button>
-        <button type="button" class="btn btn-outline-dark btn-toolbar-custom" data-bs-toggle="modal" data-bs-target="#modalCargaMasiva">
-            CARGA X FACTOR
-        </button>
         <a href="{% url 'calificaciones:ingreso_monto' %}" class="btn btn-outline-dark btn-toolbar-custom text-decoration-none pt-2">
-            CARGA X MONTO
+            CARGA X FACTOR
         </a>
+        <button type="button" 
+                id="btnDebugCarga" 
+                class="btn btn-outline-dark btn-toolbar-custom" 
+                data-bs-toggle="modal" 
+                data-bs-target="#modalCargaMasiva">
+            CARGA X MONTO
+        </button>
     </div>
     <div>
         <button type="button" class="btn btn-outline-secondary btn-toolbar-custom">
@@ -340,7 +342,7 @@
                 {% csrf_token %}
                 <input type="hidden" name="estado" value="BORRADOR">
 
-                <div class="modal-body pt-0">
+                div class="modal-body pt-0">
                     <div id="step1-datos-basicos">
                         <div class="container-fluid px-0">
                             <div class="row g-3">
@@ -814,6 +816,7 @@
                             </button>
                         </div>
                     </div>
+                </div>
 
                 <!-- MODAL FOOTER-->
                 <div class="modal-footer border-top-0">
@@ -858,24 +861,18 @@
                     <p class="text-muted">Archivos procesados listos para grabar:</p>
                     <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
                         <table class="table table-bordered table-hover table-sm table-resizable" id="tabla-carga-masiva">
-                            <thead class="table-light sticky-top">
-                                <tr>
-                                    <th style="min-width: 100px;">Ejercicio</th> 
+                            <thead class="table-light sticky-top"> <tr id="header-row-masiva"> <th style="min-width: 100px;">Ejercicio</th> 
                                     <th>Mercado</th>
                                     <th>Fecha Pago</th>
                                     <th>Secuencia</th>
                                     <th>Descripción</th>
-                                    <script>
-                                        for(let i=8; i<=37; i++) {
-                                            document.write(`<th style="min-width: 80px;">F-${i}</th>`);
-                                        }
-                                    </script>
+
                                     <th>Acogido ISFUT</th>
                                     <th>Origen</th>
-                                    </tr>
+                                </tr>
                             </thead>
                             <tbody id="tbody-carga-masiva">
-                                </tbody>
+                            </tbody>
                         </table>
                     </div>
                 </div>
@@ -928,11 +925,7 @@
                             <button type="button" class="btn btn-primary" onclick="volverALista()">Volver al listado</button>
                         </div>
                     </div>
-                </div>
-
-                <form style="display:none;">{% csrf_token %}</form>
-            </div>
-                
+                </div>                
                 <form style="display:none;">{% csrf_token %}</form>
             </div>
         </div>
@@ -946,10 +939,43 @@
     // --- 1. SCRIPT DE REDIMENSIONAMIENTO DE COLUMNAS ---
     document.addEventListener('DOMContentLoaded', function() {
         initResizableTables();
+
+        const modalEl = document.getElementById('modalCargaMasiva');
+            if (modalEl) {
+                document.body.appendChild(modalEl);
+
+                // Aseguramos que el contenido correcto se muestre al abrir
+                modalEl.addEventListener('show.bs.modal', function () {
+                    actualizarEstadoModal('lista');
+                });
+            }
+
+        const headerRow = document.getElementById('header-row-masiva');
+        if (headerRow) {
+            // Encontramos la posición antes de "Acogido ISFUT" (que es el antepenúltimo hijo actualmente)
+            // O simplemente los insertamos después de Descripción (índice 4)
+            
+            // Creamos un fragmento para mejor rendimiento
+            const fragment = document.createDocumentFragment();
+            
+            for(let i=8; i<=37; i++) {
+                const th = document.createElement('th');
+                th.style.minWidth = "80px";
+                th.className = "text-center"; // Opcional: centrar encabezados
+                th.innerText = `F-${i}`;
+                fragment.appendChild(th);
+            }
+            
+            // Insertar antes de la columna "Acogido ISFUT"
+            // headerRow.children[5] es donde estaba "Acogido ISFUT" antes de insertar
+            const target = headerRow.children[5]; 
+            headerRow.insertBefore(fragment, target);
+        }
         const observer = new MutationObserver(function(mutations) {
             initResizableTables();
         });
         observer.observe(document.body, { childList: true, subtree: true });
+
     });
 
     function initResizableTables() {
@@ -1086,7 +1112,15 @@
         }
     }
 
+    function limpiarNumero(valor) {
+        if (!valor) return '0';
+        let num = parseFloat(valor);
+        if (num === 0 || Math.abs(num) < 0.000000001) return '0';
+        return valor; 
+    }
+
     function procesarArchivo(file) {
+        
         actualizarEstadoModal('cargando');
         
         let formData = new FormData();
@@ -1141,7 +1175,10 @@
 
         for(let i=8; i<=37; i++) {
             let f = datos.factores && datos.factores[i] ? datos.factores[i] : {desc:'Factor '+i, valor:'0'}; 
-            addRow(`F-${i} ${f.desc}`, f.valor);
+            
+            let valorLimpio = limpiarNumero(f.valor); 
+            
+            addRow(`F-${i} ${f.desc}`, valorLimpio);
         }
 
         if (esRevision) {
@@ -1202,7 +1239,10 @@
                 <td></td>`; 
 
             for(let i=8; i<=37; i++) {
-                let val = (item.factores && item.factores[i]) ? item.factores[i].valor_decimal : '0';
+                let rawVal = (item.factores && item.factores[i]) ? item.factores[i].valor_decimal : '0';
+                
+                let val = limpiarNumero(rawVal);
+                
                 rowHTML += `<td>${val}</td>`;
             }
 
@@ -1371,6 +1411,57 @@
             }
         }
     });
+
+    document.addEventListener('DOMContentLoaded', function() {
+    console.log("--- INICIANDO DEBUGGER DE MODAL ---");
+
+    // 1. Verificar si el Botón existe
+    const btn = document.getElementById('btnDebugCarga');
+    if (!btn) {
+        console.error("ERROR CRÍTICO: No encuentro el botón con id='btnDebugCarga'.");
+        return;
+    }
+
+    // 2. Verificar si el Modal existe
+    const targetId = btn.getAttribute('data-bs-target');
+    const modalEl = document.querySelector(targetId);
+    
+    if (!modalEl) {
+        console.error(`ERROR CRÍTICO: El botón apunta a '${targetId}', pero ese ID no existe en el HTML.`);
+        console.log("IDs disponibles en la página:", Array.from(document.querySelectorAll('[id]')).map(el => el.id));
+    } else {
+        console.log(`OK: Botón encontrado. Apunta al modal '${targetId}' que SÍ existe.`);
+    }
+
+    // 3. Escuchar el Clic en el botón
+    btn.addEventListener('click', function(e) {
+        console.log("1. [CLIC DETECTADO] Has presionado el botón.");
+        
+        if (typeof bootstrap === 'undefined') {
+            console.error("ERROR: La librería Bootstrap JS no parece estar cargada. 'bootstrap' is undefined.");
+            return;
+        } else {
+            console.log("2. Librería Bootstrap detectada correctamente.");
+        }
+
+        // Intentar abrirlo manualmente por consola si el data-toggle falla
+        // const myModal = new bootstrap.Modal(modalEl);
+        // myModal.show();
+    });
+
+    // 4. Escuchar eventos nativos de Bootstrap en el modal
+    if (modalEl) {
+        modalEl.addEventListener('show.bs.modal', function () {
+            console.log('3. [BOOTSTRAP] Evento show.bs.modal disparado (Intentando abrir...)');
+        });
+        modalEl.addEventListener('shown.bs.modal', function () {
+            console.log('4. [BOOTSTRAP] Evento shown.bs.modal disparado (¡Visible!)');
+        });
+        modalEl.addEventListener('hide.bs.modal', function () {
+            console.log('5. [BOOTSTRAP] Cerrando modal...');
+        });
+    }
+});
 
 </script>
 {% endblock %}

@@ -96,8 +96,6 @@ def get_lista_context(request):
         'es_privilegiado': es_privilegiado,
     }
 
-from decimal import Decimal, ROUND_HALF_UP
-
 def procesar_montos_a_factores(data):
     # Si no es modo monto, retornar data original
     if data.get('modo_ingreso') != 'monto':
@@ -417,8 +415,6 @@ def reporte_calificaciones_por_agente(request):
 # ============================================================================
 @login_required
 @require_POST
-@login_required
-@require_POST
 def procesar_pdf_ajax(request):
     if 'archivo_pdf' not in request.FILES:
         return JsonResponse({'error': 'No se recibió archivo.'}, status=400)
@@ -434,6 +430,45 @@ def procesar_pdf_ajax(request):
         
         # 2. Obtenemos los datos extraídos por Docling
         datos = doc_creado.datos_extraidos or {}
+
+        # Calcular Factores desde Montos (Lógica de Reparto)
+        # ----------------------------------------------------------
+        if datos and 'factores' in datos:
+            try:
+                # 1. Simulamos el diccionario de entrada que espera la función
+                data_simulada = {'modo_ingreso': 'monto'}
+                
+                # Normalizamos las keys para asegurar que procesamos todo (str o int)
+                keys_originales = list(datos['factores'].keys())
+
+                for k in keys_originales:
+                    # Extraemos el valor decimal crudo como si fuera el "monto" ingresado
+                    item = datos['factores'][k]
+                    valor_raw = item.get('valor_decimal', item.get('valor', 0))
+                    data_simulada[f'monto_factor{k}'] = valor_raw
+                
+                # 2. Ejecutamos la función de cálculo
+                data_procesada = procesar_montos_a_factores(data_simulada)
+
+                # 3. Actualizamos los datos de respuesta con los factores calculados
+                for i in range(8, 38):
+                    key_res = f'factor{i}'
+                    
+                    # Buscamos la key en el dict original soportando string o int
+                    key_dict = None
+                    if i in datos['factores']:
+                        key_dict = i
+                    elif str(i) in datos['factores']:
+                        key_dict = str(i)
+                    
+                    if key_dict is not None and key_res in data_procesada:
+                        nuevo_valor = data_procesada[key_res]
+                        # Actualizamos valor decimal y valor visual
+                        datos['factores'][key_dict]['valor_decimal'] = str(nuevo_valor)
+                        datos['factores'][key_dict]['valor'] = str(nuevo_valor)
+            except Exception as e:
+                print(f"Error calculando factores desde montos: {e}")
+        # ----------------------------------------------------------
         
         # 3. ¡IMPORTANTE! Inyectamos el ID del documento en la respuesta
         datos['documento_id'] = doc_creado.id 
