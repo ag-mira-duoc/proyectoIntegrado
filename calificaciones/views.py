@@ -479,6 +479,41 @@ def procesar_pdf_ajax(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+@login_required
+@require_POST
+def procesar_csv_ajax(request):
+    """
+    Endpoint específico para carga de CSVs de factores.
+    """
+    if 'archivo_csv' not in request.FILES:
+        return JsonResponse({'error': 'No se recibió archivo CSV.'}, status=400)
+
+    archivo = request.FILES['archivo_csv']
+    
+    if not archivo.name.lower().endswith('.csv'):
+         return JsonResponse({'error': 'El archivo debe tener extensión .csv'}, status=400)
+
+    try:
+        doc_creado = gestionar_carga_documento(
+            archivo_memoria=archivo,
+            usuario=request.user,
+            tipo_doc='CERT_70'
+        )
+        
+        # 2. Verificar errores
+        if doc_creado.estado == 'ERROR':
+            return JsonResponse({'error': doc_creado.error_mensaje}, status=400)
+
+        # 3. Preparar respuesta JSON
+        datos = doc_creado.datos_extraidos or {}
+        
+        datos['documento_id'] = doc_creado.id
+        
+        return JsonResponse(datos)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 
 @login_required
 @require_POST

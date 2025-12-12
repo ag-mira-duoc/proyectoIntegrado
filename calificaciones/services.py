@@ -383,3 +383,152 @@ def procesar_archivo_pdf(archivo_memoria):
         import traceback
         traceback.print_exc()
         return {'error': str(e)}
+    
+def procesar_archivo_csv(archivo_memoria):
+    print(f"\n{'='*70}")
+    print("PROCESANDO CSV - MODO NATIVO (ROBUSTO)")
+    print(f"{'='*70}")
+
+    # 1. Definir estructura base con valores por defecto
+    response_data = {
+        'ejercicio': str(datetime.now().year),
+        'mercado': '', 
+        'instrumento': '', 
+        'fecha_pago': '', 
+        'secuencia': '',
+        'numero_dividendo': '',
+        'tipo_sociedad': '',
+        'valor_historico': '0', 
+        'acogidoISFUT': 'N',
+        'factores': {}
+    }
+
+    # Inicializar estructura de factores vacía
+    for i in range(8, 38):
+        response_data['factores'][i] = {
+            'desc': f'Factor {i}', 
+            'valor': '0', 
+            'valor_decimal': '0'
+        }
+
+    try:
+        # 2. Leer archivo decodificado
+        archivo_texto = io.TextIOWrapper(archivo_memoria, encoding='utf-8-sig')
+        lector = csv.reader(archivo_texto)
+
+        # 3. Mapa de campos
+        mapa_campos = {
+            # Ejercicio
+            'ejercicio': 'ejercicio',
+            'año': 'ejercicio',
+            'anno': 'ejercicio',
+
+            # Mercado
+            'mercado': 'mercado',
+            'bolsa': 'mercado',
+
+            # Instrumento
+            'instrumento': 'instrumento',
+            'nemo': 'instrumento',
+            'nemotecnico': 'instrumento',
+            'emisor': 'instrumento',
+            'nombre': 'instrumento',
+
+            # Fecha
+            'fecha': 'fecha_pago',
+            'fecha pago': 'fecha_pago',
+            'fecha de pago': 'fecha_pago',
+
+            # Secuencia
+            'secuencia': 'secuencia',
+            'evento': 'secuencia',
+            'id': 'secuencia',
+
+            # Numero Dividendo
+            'numero de dividendo': 'numero_dividendo',
+            'num dividendo': 'numero_dividendo',
+            'n dividendo': 'numero_dividendo',
+            'dividendo': 'numero_dividendo',
+
+            # Tipo Sociedad
+            'tipo sociedad': 'tipo_sociedad',
+            'tipo': 'tipo_sociedad',
+
+            # Valor Histórico
+            'valor historico': 'valor_historico',
+            'valor histórico': 'valor_historico',
+            'monto historico': 'valor_historico'
+        }
+
+        for fila in lector:
+            # Validación básica de estructura de fila
+            if not fila or len(fila) < 5:
+                continue
+
+            # Obtener datos y normalizar la llave para búsqueda
+            descripcion_orig = fila[0].strip()
+            descripcion_lower = descripcion_orig.lower()
+            valor_raw = fila[4].strip()
+
+            # Saltar cabeceras o filas vacías
+            if not descripcion_orig or descripcion_lower == 'descripción':
+                continue
+
+            # --- A. BÚSQUEDA EN MAPA DE CAMPOS (DIRECTA) ---
+            if descripcion_lower in mapa_campos:
+                key = mapa_campos[descripcion_lower]
+                
+                if key == 'fecha_pago':
+                    # Intentar normalizar fecha a DD/MM/AAAA para el frontend
+                    try:
+                        # Prueba formato ISO (Excel estándar)
+                        fecha_dt = datetime.strptime(valor_raw, '%Y-%m-%d')
+                        response_data[key] = fecha_dt.strftime('%d/%m/%Y')
+                    except ValueError:
+                        try:
+                            # Prueba formato Chileno
+                            fecha_dt = datetime.strptime(valor_raw, '%d-%m-%Y')
+                            response_data[key] = fecha_dt.strftime('%d/%m/%Y')
+                        except ValueError:
+
+                            response_data[key] = valor_raw
+                
+                elif key == 'valor_historico':
+                    dec_val = normalizar_a_decimal(valor_raw)
+                    response_data[key] = formatear_decimal_frontend(dec_val)
+                    response_data['factores'][8]['valor'] = formatear_decimal_frontend(dec_val)
+                    response_data['factores'][8]['valor_decimal'] = str(dec_val / FACTOR_DIVISOR)
+
+                else:
+                    response_data[key] = valor_raw
+
+            # --- B. DETECCIÓN FLEXIBLE DE FACTORES ---
+            # Busca la palabra 'factor' y extrae cualquier número presente en el texto
+            elif 'factor' in descripcion_lower:
+                try:
+                    numeros = [int(s) for s in descripcion_orig.split() if s.isdigit()]
+                    
+                    if numeros:
+                        num_factor = numeros[0]
+                        
+                        if 8 <= num_factor <= 37:
+                            dec_val = normalizar_a_decimal(valor_raw)
+                            
+                            response_data['factores'][num_factor]['valor'] = formatear_decimal_frontend(dec_val)
+                            
+                            if dec_val > 100:
+                                response_data['factores'][num_factor]['valor_decimal'] = str(dec_val / FACTOR_DIVISOR)
+                            else:
+                                response_data['factores'][num_factor]['valor_decimal'] = str(dec_val)
+
+                except Exception as e:
+                    print(f"Error parseando factor {descripcion_orig}: {e}")
+
+        # Limpiar el wrapper
+        archivo_texto.detach()
+        
+        return response_data
+
+    except Exception as e:
+        print(f"[ERROR CSV] {e}")
+        return {'error': f"Error leyendo CSV: {str(e)}"}

@@ -4,7 +4,7 @@ from django.utils import timezone
 from .models import Documento
 from nuam_config.azure_config import get_container_client
 
-from calificaciones.services import procesar_archivo_pdf 
+from calificaciones.services import procesar_archivo_pdf, procesar_archivo_csv 
 
 def gestionar_carga_documento(archivo_memoria, usuario, tipo_doc='CERT_70', calificacion=None):
     
@@ -49,13 +49,19 @@ def gestionar_carga_documento(archivo_memoria, usuario, tipo_doc='CERT_70', cali
         # IMPORTANTE: Rebobinar el archivo porque upload_blob lo leyó hasta el final
         archivo_memoria.seek(0) 
         
-        # Llamamos a la función pura que está en calificaciones/services.py
-        resultado_extraccion = procesar_archivo_pdf(archivo_memoria)
+        ext = os.path.splitext(doc.nombre_archivo)[1].lower()
+        
+        if ext == '.csv':
+            resultado_extraccion = procesar_archivo_csv(archivo_memoria)
+        else:
+            resultado_extraccion = procesar_archivo_pdf(archivo_memoria)
         
         if 'error' in resultado_extraccion:
             doc.marcar_como_error(resultado_extraccion['error'])
         else:
-            confianza = 100.0 if resultado_extraccion.get('factores') else 0.0
+            # Si es CSV la confianza es 100% porque es lectura directa
+            confianza = 100.0 if (resultado_extraccion.get('factores') or ext == '.csv') else 0.0
+            
             doc.marcar_como_completado(
                 texto_extraido=str(resultado_extraccion),
                 datos_extraidos=resultado_extraccion,
