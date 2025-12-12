@@ -224,19 +224,10 @@ def calificacion_detalle(request, pk):
 @login_required
 @analista_requerido
 def calificacion_crear(request):
-    print("--- INICIO DEBUG CALIFICACION CREAR ---")
     if request.method == 'POST':
         rut_ingresado = request.POST.get('rut_cliente')
         nombre_instrumento = request.POST.get('instrumento')
         fecha_pago_raw = request.POST.get('fecha_pago')
-        
-        # DEBUG: Ver qué llega crudo
-        print(f"1. RUT: {rut_ingresado}, Inst: {nombre_instrumento}")
-        print(f"2. Modo Ingreso detectado: {request.POST.get('modo_ingreso')}")
-        
-        # Verificar si llega algún monto de ejemplo (ej. factor8 renombrado)
-        print(f"3. Ejemplo Monto F8 (monto_factor8): {request.POST.get('monto_factor8')}")
-        print(f"4. Ejemplo Factor F8 original (factor8): {request.POST.get('factor8')}")
 
         if not rut_ingresado or not nombre_instrumento:
             messages.error(request, 'El RUT y el Instrumento son obligatorios.')
@@ -259,9 +250,6 @@ def calificacion_crear(request):
                 data = request.POST.copy()
                 data = procesar_montos_a_factores(data)
                 
-                # DEBUG: Ver dato procesado antes de validar
-                print(f"5. Factor 8 despues de procesar: {data.get('factor8')}")
-                
                 # Completar datos
                 data['cliente'] = cliente.id
                 data['fecha_pago'] = fecha_pago_raw 
@@ -269,7 +257,6 @@ def calificacion_crear(request):
                 form = CalificacionForm(data, user=request.user)
                 
                 if form.is_valid():
-                    print("6. FORM VALIDADO OK. Guardando...")
                     calificacion = form.save(commit=False)
                     calificacion.user = request.user
                     calificacion.cliente = cliente
@@ -279,14 +266,9 @@ def calificacion_crear(request):
                     
                     calificacion.save()
                     messages.success(request, f'Calificación creada para {nombre_instrumento}.')
-                    print("--- FIN DEBUG: EXITO ---")
                     return redirect('calificaciones:listado')
                 else:
-                    # DEBUG: ¡AQUI ESTA EL ERROR!
                     errores = form.errors.as_text()
-                    print("6. ERROR DE VALIDACION DEL FORMULARIO:")
-                    print(errores)
-                    print(form.errors) # Imprime detalle completo
                     
                     messages.error(request, f'Error al guardar: {errores}')
                     return redirect('calificaciones:listado')
@@ -902,3 +884,296 @@ def reportes_admin(request):
     }
     
     return render(request, 'calificaciones/reportes_admin.html', context)
+
+@login_required
+@administrador_requerido
+def descargar_reportes_excel(request):
+    """
+    Genera un archivo Excel con todos los reportes administrativos.
+    """
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from openpyxl.utils import get_column_letter
+    
+    wb = Workbook()
+    
+    # ==========================================
+    # HOJA 1: Top 10 Clientes
+    # ==========================================
+    ws1 = wb.active
+    ws1.title = "Top Clientes"
+    
+    # Título
+    ws1['A1'] = 'Top 10 Clientes con Más Calificaciones'
+    ws1['A1'].font = Font(bold=True, size=14)
+    ws1.merge_cells('A1:D1')
+    
+    # Encabezados
+    headers = ['#', 'RUT Cliente', 'Total', 'Aprobadas', 'En Revisión']
+    for col, header in enumerate(headers, 1):
+        cell = ws1.cell(row=3, column=col, value=header)
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        cell.font = Font(bold=True, color="FFFFFF")
+    
+    # Datos
+    top_clientes = Calificacion.objects.values(
+        'cliente__rut'
+    ).annotate(
+        total=Count('id'),
+        aprobadas=Count('id', filter=Q(estado='APROBADA')),
+        en_revision=Count('id', filter=Q(estado='REVISION'))
+    ).order_by('-total')[:10]
+    
+    for idx, item in enumerate(top_clientes, 1):
+        ws1.cell(row=3+idx, column=1, value=idx)
+        ws1.cell(row=3+idx, column=2, value=item['cliente__rut'] or 'Sin RUT')
+        ws1.cell(row=3+idx, column=3, value=item['total'])
+        ws1.cell(row=3+idx, column=4, value=item['aprobadas'])
+        ws1.cell(row=3+idx, column=5, value=item['en_revision'])
+    
+    # Ajustar ancho de columnas
+    for col in range(1, 6):
+        ws1.column_dimensions[get_column_letter(col)].width = 20
+    
+    # ==========================================
+    # HOJA 2: Distribución por Estado
+    # ==========================================
+    ws2 = wb.create_sheet("Distribución Estados")
+    
+    ws2['A1'] = 'Distribución de Calificaciones por Estado'
+    ws2['A1'].font = Font(bold=True, size=14)
+    ws2.merge_cells('A1:C1')
+    
+    headers = ['Estado', 'Cantidad', 'Porcentaje']
+    for col, header in enumerate(headers, 1):
+        cell = ws2.cell(row=3, column=col, value=header)
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill(start_color="70AD47", end_color="70AD47", fill_type="solid")
+        cell.font = Font(bold=True, color="FFFFFF")
+    
+    total_calificaciones = Calificacion.objects.count()
+    row = 4
+    for estado_code, estado_display in Calificacion.ESTADOS:
+        count = Calificacion.objects.filter(estado=estado_code).count()
+        if count > 0:
+            porcentaje = (count / total_calificaciones * 100) if total_calificaciones > 0 else 0
+            ws2.cell(row=row, column=1, value=estado_display)
+            ws2.cell(row=row, column=2, value=count)
+            ws2.cell(row=row, column=3, value=f"{porcentaje:.1f}%")
+            row += 1
+    
+    for col in range(1, 4):
+        ws2.column_dimensions[get_column_letter(col)].width = 20
+    
+    # ==========================================
+    # HOJA 3: Tendencia Semanal
+    # ==========================================
+    ws3 = wb.create_sheet("Tendencia Semanal")
+    
+    ws3['A1'] = 'Tendencia de Calificaciones - Últimas 8 Semanas'
+    ws3['A1'].font = Font(bold=True, size=14)
+    ws3.merge_cells('A1:B1')
+    
+    headers = ['Semana', 'Cantidad']
+    for col, header in enumerate(headers, 1):
+        cell = ws3.cell(row=3, column=col, value=header)
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill(start_color="FFC000", end_color="FFC000", fill_type="solid")
+        cell.font = Font(bold=True, color="FFFFFF")
+    
+    fecha_inicio_tendencia = datetime.now() - timedelta(weeks=8)
+    tendencia_semanal = Calificacion.objects.filter(
+        created_at__gte=fecha_inicio_tendencia
+    ).annotate(
+        semana=TruncWeek('created_at')
+    ).values('semana').annotate(
+        cantidad=Count('id')
+    ).order_by('semana')
+    
+    for idx, item in enumerate(tendencia_semanal, 4):
+        ws3.cell(row=idx, column=1, value=item['semana'].strftime('%d/%m/%Y'))
+        ws3.cell(row=idx, column=2, value=item['cantidad'])
+    
+    for col in range(1, 3):
+        ws3.column_dimensions[get_column_letter(col)].width = 20
+    
+    # ==========================================
+    # HOJA 4: Top Corredoras
+    # ==========================================
+    ws4 = wb.create_sheet("Top Corredoras")
+    
+    ws4['A1'] = 'Top 10 Corredoras Más Activas'
+    ws4['A1'].font = Font(bold=True, size=14)
+    ws4.merge_cells('A1:D1')
+    
+    headers = ['#', 'Corredora', 'Total', 'Aprobadas']
+    for col, header in enumerate(headers, 1):
+        cell = ws4.cell(row=3, column=col, value=header)
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill(start_color="E7E6E6", end_color="E7E6E6", fill_type="solid")
+        cell.font = Font(bold=True)
+    
+    top_corredoras = Calificacion.objects.values(
+        'corredora__nombre'
+    ).annotate(
+        total=Count('id'),
+        aprobadas=Count('id', filter=Q(estado='APROBADA'))
+    ).order_by('-total')[:10]
+    
+    for idx, item in enumerate(top_corredoras, 1):
+        ws4.cell(row=3+idx, column=1, value=idx)
+        ws4.cell(row=3+idx, column=2, value=item['corredora__nombre'] or 'Sin Corredora')
+        ws4.cell(row=3+idx, column=3, value=item['total'])
+        ws4.cell(row=3+idx, column=4, value=item['aprobadas'])
+    
+    for col in range(1, 5):
+        ws4.column_dimensions[get_column_letter(col)].width = 25
+    
+    # ==========================================
+    # HOJA 5: Productividad Analistas
+    # ==========================================
+    ws5 = wb.create_sheet("Productividad Analistas")
+    
+    ws5['A1'] = 'Top 10 Analistas Más Productivos'
+    ws5['A1'].font = Font(bold=True, size=14)
+    ws5.merge_cells('A1:F1')
+    
+    headers = ['#', 'Nombre', 'Email', 'Total', 'Aprobadas', '% Aprobación']
+    for col, header in enumerate(headers, 1):
+        cell = ws5.cell(row=3, column=col, value=header)
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill(start_color="5B9BD5", end_color="5B9BD5", fill_type="solid")
+        cell.font = Font(bold=True, color="FFFFFF")
+    
+    productividad_analistas = Calificacion.objects.values(
+        'user__nombre', 'user__apellido', 'user__email'
+    ).annotate(
+        total=Count('id'),
+        aprobadas=Count('id', filter=Q(estado='APROBADA'))
+    ).order_by('-total')[:10]
+    
+    for idx, item in enumerate(productividad_analistas, 1):
+        nombre_completo = f"{item['user__nombre']} {item['user__apellido']}"
+        porcentaje = (item['aprobadas'] / item['total'] * 100) if item['total'] > 0 else 0
+        
+        ws5.cell(row=3+idx, column=1, value=idx)
+        ws5.cell(row=3+idx, column=2, value=nombre_completo)
+        ws5.cell(row=3+idx, column=3, value=item['user__email'])
+        ws5.cell(row=3+idx, column=4, value=item['total'])
+        ws5.cell(row=3+idx, column=5, value=item['aprobadas'])
+        ws5.cell(row=3+idx, column=6, value=f"{porcentaje:.1f}%")
+    
+    for col in range(1, 7):
+        ws5.column_dimensions[get_column_letter(col)].width = 22
+    
+    # ==========================================
+    # HOJA 6: Actividad por Día de Semana
+    # ==========================================
+    ws6 = wb.create_sheet("Actividad Semanal")
+    
+    ws6['A1'] = 'Actividad por Día de la Semana'
+    ws6['A1'].font = Font(bold=True, size=14)
+    ws6.merge_cells('A1:B1')
+    
+    headers = ['Día', 'Cantidad']
+    for col, header in enumerate(headers, 1):
+        cell = ws6.cell(row=3, column=col, value=header)
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill(start_color="44546A", end_color="44546A", fill_type="solid")
+        cell.font = Font(bold=True, color="FFFFFF")
+    
+    actividad_semanal = Calificacion.objects.annotate(
+        dia=ExtractWeekDay('created_at')
+    ).values('dia').annotate(
+        cantidad=Count('id')
+    ).order_by('dia')
+    
+    dias_nombres = {
+        1: 'Domingo', 2: 'Lunes', 3: 'Martes', 4: 'Miércoles',
+        5: 'Jueves', 6: 'Viernes', 7: 'Sábado'
+    }
+    
+    for item in actividad_semanal:
+        dia_num = item['dia']
+        idx = dia_num + 3
+        ws6.cell(row=idx, column=1, value=dias_nombres.get(dia_num, 'Desconocido'))
+        ws6.cell(row=idx, column=2, value=item['cantidad'])
+    
+    for col in range(1, 3):
+        ws6.column_dimensions[get_column_letter(col)].width = 20
+    
+    # ==========================================
+    # HOJA 7: Comparación Mensual
+    # ==========================================
+    ws7 = wb.create_sheet("Comparación Mensual")
+    
+    ws7['A1'] = 'Comparación Mes Actual vs Mes Anterior'
+    ws7['A1'].font = Font(bold=True, size=14)
+    ws7.merge_cells('A1:D1')
+    
+    headers = ['Métrica', 'Mes Actual', 'Mes Anterior', 'Crecimiento']
+    for col, header in enumerate(headers, 1):
+        cell = ws7.cell(row=3, column=col, value=header)
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill(start_color="70AD47", end_color="70AD47", fill_type="solid")
+        cell.font = Font(bold=True, color="FFFFFF")
+    
+    ahora = datetime.now()
+    
+    mes_actual_stats = Calificacion.objects.filter(
+        created_at__month=ahora.month,
+        created_at__year=ahora.year
+    ).aggregate(
+        total=Count('id'),
+        aprobadas=Count('id', filter=Q(estado='APROBADA'))
+    )
+    
+    if ahora.month == 1:
+        mes_anterior_num = 12
+        año_anterior = ahora.year - 1
+    else:
+        mes_anterior_num = ahora.month - 1
+        año_anterior = ahora.year
+    
+    mes_anterior_stats = Calificacion.objects.filter(
+        created_at__month=mes_anterior_num,
+        created_at__year=año_anterior
+    ).aggregate(
+        total=Count('id'),
+        aprobadas=Count('id', filter=Q(estado='APROBADA'))
+    )
+    
+    # Total
+    actual_total = mes_actual_stats.get('total', 0)
+    anterior_total = mes_anterior_stats.get('total', 0)
+    crecimiento_total = ((actual_total - anterior_total) / anterior_total * 100) if anterior_total > 0 else 0
+    
+    ws7.cell(row=4, column=1, value='Total Calificaciones')
+    ws7.cell(row=4, column=2, value=actual_total)
+    ws7.cell(row=4, column=3, value=anterior_total)
+    ws7.cell(row=4, column=4, value=f"{crecimiento_total:+.1f}%")
+    
+    # Aprobadas
+    actual_aprobadas = mes_actual_stats.get('aprobadas', 0)
+    anterior_aprobadas = mes_anterior_stats.get('aprobadas', 0)
+    crecimiento_aprobadas = ((actual_aprobadas - anterior_aprobadas) / anterior_aprobadas * 100) if anterior_aprobadas > 0 else 0
+    
+    ws7.cell(row=5, column=1, value='Aprobadas')
+    ws7.cell(row=5, column=2, value=actual_aprobadas)
+    ws7.cell(row=5, column=3, value=anterior_aprobadas)
+    ws7.cell(row=5, column=4, value=f"{crecimiento_aprobadas:+.1f}%")
+    
+    for col in range(1, 5):
+        ws7.column_dimensions[get_column_letter(col)].width = 22
+    
+    # ==========================================
+    # GENERAR RESPUESTA HTTP
+    # ==========================================
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="reportes_admin_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx"'
+    
+    wb.save(response)
+    return response

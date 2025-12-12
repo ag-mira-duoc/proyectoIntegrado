@@ -21,4 +21,5 @@ urlpatterns = [
     # Reportes
     path('reporte-agentes/', views.reporte_calificaciones_por_agente, name='reporte_agentes'),
     path('reportes-admin/', views.reportes_admin, name='reportes_admin'),
+    path('reportes-admin/descargar/', views.descargar_reportes_excel, name='descargar_reportes_excel'),
 ]
